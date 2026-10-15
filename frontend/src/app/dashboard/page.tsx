@@ -1,0 +1,231 @@
+"use client";
+
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, Mail, MessageCircle, PiggyBank, Sparkles, Tag, Target } from "lucide-react";
+import Link from "next/link";
+import { useCallback } from "react";
+import useSWR from "swr";
+import { AppShell } from "@/components/AppShell";
+import { CategoryBars, SplitBar, SplitLegend } from "@/components/charts";
+import { GoalIcon } from "@/components/GoalIcon";
+import { Card, Empty, ProgressBar, Spinner } from "@/components/ui";
+import { fetcher, rs } from "@/lib/api";
+import { useSession } from "@/lib/session";
+
+type Dashboard = {
+  total_balance: string; total_savings: string; expendable: string; saved_this_week: string;
+  deal_savings_total: string; income_this_month: string; spent_this_month: string;
+  banks: { account_id: string; bank: string; bank_short: string; nickname: string; account_type: string; last4: string | null;
+    balance: string; savings: string; expendable: string }[];
+  goals: { id: string; name: string; icon: string; status: string; target: string; saved: string; deadline: string | null;
+    progress: number; monthly_needed: string }[];
+  spending_by_category: { category: string; name: string; color: string; amount: string }[];
+  recent_transactions: { id: string; occurred_at: string; amount: string; direction: string; merchant: string; category: string }[];
+  deals_for_you: { id: string; merchant: string; title: string; discount_type: string; discount_value: number | null;
+    your_eligible_cards: string[]; valid_until: string | null; source_url: string | null; requires_card: boolean }[];
+  email_connected: boolean;
+};
+
+export default function DashboardPage() {
+  const { data, mutate } = useSWR<Dashboard>("/dashboard", fetcher, { refreshInterval: 60_000 });
+  const refresh = useCallback(() => {
+    mutate();
+  }, [mutate]);
+  return <AppShell onChatActivity={refresh}>{data ? <DashboardView d={data} /> : <div className="grid h-64 place-items-center"><Spinner /></div>}</AppShell>;
+}
+
+function DashboardView({ d }: { d: Dashboard }) {
+  const { user } = useSession();
+  const first = user?.full_name?.split(" ")[0];
+  const hasData = d.banks.length > 0 || d.goals.length > 0;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-sm text-muted">Assalam o Alaikum{first ? `, ${first}` : ""}</p>
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Your money at a glance</h1>
+      </div>
+
+      {!user?.onboarding_completed && (
+        <Link href="?chat=1" className="flex items-center gap-4 rounded-[var(--radius-card)] bg-forest p-5 text-forest-ink">
+          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-ink">
+            <MessageCircle className="size-6" aria-hidden />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold">Let&apos;s set up your plan</p>
+            <p className="text-sm opacity-85">Chat with your assistant about your banks, cards and goals. It takes 3 minutes.</p>
+          </div>
+          <ChevronRight className="size-5" aria-hidden />
+        </Link>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Card className="col-span-2 bg-forest text-forest-ink md:col-span-2">
+          <p className="text-sm opacity-80">Total balance</p>
+          <p className="tabular mt-1 text-3xl font-bold md:text-4xl">{rs(d.total_balance)}</p>
+          <div className="mt-4 flex flex-wrap gap-2 text-sm">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 font-semibold text-primary-ink">
+              <Sparkles className="size-3.5" aria-hidden /> {rs(d.saved_this_week)} saved this week
+            </span>
+            {Number(d.deal_savings_total) > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
+                <Tag className="size-3.5" aria-hidden /> {rs(d.deal_savings_total)} saved with deals
+              </span>
+            )}
+          </div>
+        </Card>
+        <Card>
+          <p className="flex items-center gap-1.5 text-sm text-muted"><span className="size-2.5 rounded-full bg-chart-save" />Savings</p>
+          <p className="tabular mt-1 text-xl font-bold md:text-2xl">{rs(d.total_savings)}</p>
+          <p className="mt-1 text-xs text-muted">Set aside for your goals</p>
+        </Card>
+        <Card>
+          <p className="flex items-center gap-1.5 text-sm text-muted"><span className="size-2.5 rounded-full bg-chart-spend" />Spendable</p>
+          <p className="tabular mt-1 text-xl font-bold md:text-2xl">{rs(d.expendable)}</p>
+          <p className="mt-1 text-xs text-muted">Spent {rs(d.spent_this_month, { compact: true })} this month</p>
+        </Card>
+      </div>
+
+      {!d.email_connected && hasData && (
+        <Link href="/email" className="flex items-center gap-3 rounded-[var(--radius-card)] border border-dashed border-forest/40 bg-surface p-4">
+          <Mail className="size-5 text-forest dark:text-primary" aria-hidden />
+          <p className="flex-1 text-sm"><span className="font-semibold">Connect your email</span> to track bank transactions automatically.</p>
+          <ChevronRight className="size-4 text-muted" aria-hidden />
+        </Link>
+      )}
+
+      <div className="grid gap-5 lg:grid-cols-5">
+        <div className="space-y-5 lg:col-span-3">
+          <Card>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Goals</h2>
+              <Target className="size-5 text-muted" aria-hidden />
+            </div>
+            {d.goals.length === 0 ? (
+              <Empty icon={<Target className="size-6" />} title="No goals yet"
+                body="Tell your assistant what you're saving for, like “a car in 6 months”."
+                action={<Link href="?chat=1" className="mt-2 text-sm font-semibold text-forest dark:text-primary">Add a goal in chat</Link>} />
+            ) : (
+              <ul className="space-y-3">
+                {d.goals.map((g) => (
+                  <li key={g.id}>
+                    <Link href={`/goals/${g.id}`} className="block rounded-2xl bg-surface-2 p-4 transition hover:brightness-[0.98]">
+                      <div className="flex items-center gap-3">
+                        <GoalIcon name={g.icon} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className="truncate font-semibold">{g.name}</p>
+                            <p className="tabular text-sm font-semibold">{Math.round(g.progress * 100)}%</p>
+                          </div>
+                          <p className="tabular text-xs text-muted">
+                            {rs(g.saved)} of {rs(g.target)}
+                            {g.deadline && ` · by ${new Date(g.deadline).toLocaleDateString("en-PK", { month: "short", year: "numeric" })}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3"><ProgressBar value={g.progress} label={`${g.name} progress`} /></div>
+                      {g.status === "completed" ? (
+                        <p className="mt-2 text-xs font-semibold text-forest dark:text-primary">Completed 🎉</p>
+                      ) : Number(g.monthly_needed) > 0 && (
+                        <p className="mt-2 text-xs text-muted">Needs {rs(g.monthly_needed)}/month to stay on time</p>
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-bold">Where your money is</h2>
+              <SplitLegend />
+            </div>
+            {d.banks.length === 0 ? (
+              <Empty icon={<PiggyBank className="size-6" />} title="No banks added" body="Tell your assistant which banks and wallets you use." />
+            ) : (
+              <ul className="space-y-4">
+                {d.banks.map((b) => (
+                  <li key={b.account_id}>
+                    <Link href={`/banks#${b.account_id}`} className="block">
+                      <div className="mb-2 flex items-baseline justify-between gap-2">
+                        <p className="font-semibold">{b.bank_short}<span className="ml-2 text-xs font-normal text-muted">{b.nickname !== b.bank_short && b.nickname}{b.last4 && ` ••${b.last4}`}</span></p>
+                        <p className="tabular font-semibold">{rs(b.balance)}</p>
+                      </div>
+                      <SplitBar savings={Number(b.savings)} expendable={Number(b.expendable)} label={b.bank} />
+                      <div className="tabular mt-1.5 flex justify-between text-xs text-muted">
+                        <span>{rs(b.savings)} savings</span><span>{rs(b.expendable)} spendable</span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+
+        <div className="space-y-5 lg:col-span-2">
+          <Card>
+            <h2 className="mb-4 text-lg font-bold">Spending this month</h2>
+            {d.spending_by_category.length === 0 ? (
+              <p className="py-4 text-sm text-muted">No spending recorded yet this month.</p>
+            ) : (
+              <CategoryBars rows={d.spending_by_category} />
+            )}
+          </Card>
+
+          <Card>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Deals for you</h2>
+              <Tag className="size-5 text-muted" aria-hidden />
+            </div>
+            {d.deals_for_you.length === 0 ? (
+              <p className="py-4 text-sm text-muted">We&apos;re collecting discounts for your cards. Check back soon.</p>
+            ) : (
+              <ul className="space-y-2.5">
+                {d.deals_for_you.map((deal) => (
+                  <li key={deal.id} className="rounded-2xl bg-surface-2 p-3.5">
+                    <div className="flex items-start gap-3">
+                      <span className="tabular grid min-w-14 place-items-center rounded-xl bg-primary px-2 py-1.5 text-sm font-bold text-primary-ink">
+                        {deal.discount_type === "percent" && deal.discount_value ? `${deal.discount_value}%` : deal.discount_type === "flat" && deal.discount_value ? rs(deal.discount_value, { compact: true }) : deal.discount_type === "bogo" ? "1+1" : "Deal"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">{deal.merchant}</p>
+                        <p className="text-sm text-ink-2">{deal.title}</p>
+                        <p className="mt-1 text-xs text-muted">
+                          {deal.your_eligible_cards[0] ? `With your ${deal.your_eligible_cards[0]}` : "Any card or cash"}
+                          {deal.valid_until && ` · until ${new Date(deal.valid_until).toLocaleDateString("en-PK", { day: "numeric", month: "short" })}`}
+                        </p>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card>
+            <h2 className="mb-3 text-lg font-bold">Recent activity</h2>
+            {d.recent_transactions.length === 0 ? (
+              <p className="py-4 text-sm text-muted">Transactions from your bank emails or chat appear here.</p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {d.recent_transactions.map((t) => (
+                  <li key={t.id} className="flex items-center gap-3 py-2.5">
+                    <span className="grid size-9 place-items-center rounded-full bg-surface-2">
+                      {t.direction === "credit" ? <ArrowDownLeft className="size-4 text-forest dark:text-primary" aria-label="Money in" /> : <ArrowUpRight className="size-4 text-muted" aria-label="Money out" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{t.merchant || (t.direction === "credit" ? "Money in" : "Payment")}</p>
+                      <p className="text-xs capitalize text-muted">{t.category} · {new Date(t.occurred_at).toLocaleDateString("en-PK", { day: "numeric", month: "short" })}</p>
+                    </div>
+                    <p className="tabular text-sm font-semibold">{t.direction === "credit" ? "+" : "−"}{rs(t.amount)}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

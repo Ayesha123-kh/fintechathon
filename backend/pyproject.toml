@@ -1,0 +1,46 @@
+[project]
+name = "fintech-backend"
+version = "0.1.0"
+description = "Personal finance assistant API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "email-validator>=2.2",
+    "pyjwt>=2.10",
+    "argon2-cffi>=23.1",
+    "redis>=5.2",
+    "httpx>=0.28",
+    "openai>=1.55",
+    "webauthn>=2.4",
+    "pywebpush>=2.0",
+    "cryptography>=43",
+    "mcp>=1.12,<2",
+    "apscheduler>=3.11,<4",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.3",
+    "ddgs>=9.0",
+    "python-multipart>=0.0.17",
+    "aiosmtplib>=3.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.8"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+ignore = ["B008", "E501", "ASYNC109"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]

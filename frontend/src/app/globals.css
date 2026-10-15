@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+/* Brand: #B0E454 lime · #224F10 forest · #EAFFD0 mint · #0D0D0D ink */
+:root {
+  --bg: #eaffd0;
+  --surface: #ffffff;
+  --surface-2: #f4fbe9;
+  --ink: #0d0d0d;
+  --ink-2: #3d4636;
+  --muted: #6b7564;
+  --line: #dcebc6;
+  --primary: #b0e454;
+  --primary-ink: #0d0d0d;
+  --forest: #224f10;
+  --forest-ink: #eaffd0;
+  --danger: #b42318;
+  /* Validated chart steps (dataviz validator, light surface) */
+  --chart-save: #2e6a14;
+  --chart-spend: #6a62c9;
+  --chart-track: #e6f2d6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0d0d;
+    --surface: #161a13;
+    --surface-2: #1d2219;
+    --ink: #f1f7e8;
+    --ink-2: #c9d4bd;
+    --muted: #8d9883;
+    --line: #2a3224;
+    --primary: #b0e454;
+    --primary-ink: #0d0d0d;
+    --forest: #224f10;
+    --forest-ink: #eaffd0;
+    --danger: #f97066;
+    --chart-save: #4e8c22;
+    --chart-spend: #7b74d6;
+    --chart-track: #242b1f;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d0d0d;
+  --surface: #161a13;
+  --surface-2: #1d2219;
+  --ink: #f1f7e8;
+  --ink-2: #c9d4bd;
+  --muted: #8d9883;
+  --line: #2a3224;
+  --danger: #f97066;
+  --chart-save: #4e8c22;
+  --chart-spend: #7b74d6;
+  --chart-track: #242b1f;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-forest: var(--forest);
+  --color-forest-ink: var(--forest-ink);
+  --color-danger: var(--danger);
+  --color-chart-save: var(--chart-save);
+  --color-chart-spend: var(--chart-spend);
+  --color-chart-track: var(--chart-track);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 1.5rem;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Chat markdown-lite */
+.chat-text p + p,
+.chat-text ul + p,
+.chat-text p + ul {
+  margin-top: 0.4rem;
+}
+.chat-text ul {
+  list-style: disc;
+  padding-left: 1.1rem;
+}
+.chat-text a {
+  text-decoration: underline;
+}

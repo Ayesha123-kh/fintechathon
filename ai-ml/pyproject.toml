@@ -1,0 +1,23 @@
+[project]
+name = "fintech-agents-gateway"
+version = "0.1.0"
+description = "Bridges the backend and a self-hosted OpenMausBot: agent sync, per-user rooms, event relay"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "httpx>=0.28",
+    "pydantic-settings>=2.6",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.8"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B008", "E501"]
