@@ -55,7 +55,6 @@ class Card(UUIDPk, UserOwned, Timestamps, Base):
     tier: Mapped[str | None] = mapped_column(String(30))  # classic | silver | gold | platinum | titanium ...
     card_type: Mapped[str] = mapped_column(String(10), default="debit")  # debit | credit
     label: Mapped[str] = mapped_column(String(120))  # e.g. "Visa Silver Card of Meezan Bank"
-    last4: Mapped[str | None] = mapped_column(String(4))
 
 
 class Goal(UUIDPk, UserOwned, Timestamps, Base):

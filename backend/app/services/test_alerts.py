@@ -49,7 +49,8 @@ def build_alert(bank: Bank, account: BankAccount, card: Card | None, direction: 
         merchant, low, high = random.choice(DEBITS)
         amount = _amount(low, high)
         balance = Decimal(account.balance) - amount
-        via = f"{card.network.title()} card ****{card.last4}" if card and card.last4 else f"A/C ****{account.last4 or '0000'}"
+        card_txt = f" using your {card.network.title()} {card.card_type} card" if card else ""
+        via = f"A/C ****{account.last4 or '0000'}{card_txt}"
         line = f"PKR {amount:,.2f} has been debited from your {via} at {merchant} on {stamp}."
     else:
         merchant, low, high = random.choice(CREDITS)

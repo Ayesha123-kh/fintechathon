@@ -70,7 +70,7 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
                 href={href}
                 className={clsx(
                   "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
-                  pathname.startsWith(href) ? "bg-forest text-forest-ink" : "text-ink-2 hover:bg-surface",
+                  pathname.startsWith(href) ? "bg-forest text-forest-ink" : "text-ink-2 hover:bg-hover",
                 )}
               >
                 <Icon className="size-4" aria-hidden /> {label}
@@ -80,17 +80,17 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
           <div className="ml-auto flex items-center gap-1">
             {me?.test_tools && (
               <button onClick={sendTestAlert} disabled={sending} aria-label="Send a test bank email" title="Send a test bank email"
-                className="inline-flex h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink-2 hover:bg-surface disabled:opacity-50">
+                className="inline-flex h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink-2 hover:bg-hover disabled:opacity-50">
                 <FlaskConical className={clsx("size-5", sending && "animate-pulse")} aria-hidden />
                 <span className="hidden lg:inline">Test bank email</span>
               </button>
             )}
             <button onClick={() => setSheet("notifications")} aria-label="Notifications"
-              className="grid size-10 place-items-center rounded-full hover:bg-surface">
+              className="grid size-10 place-items-center rounded-full hover:bg-hover">
               <Bell className="size-5" />
             </button>
             <button onClick={() => setSheet("settings")} aria-label="Settings"
-              className="grid size-10 place-items-center rounded-full hover:bg-surface">
+              className="grid size-10 place-items-center rounded-full hover:bg-hover">
               <Settings2 className="size-5" />
             </button>
           </div>
@@ -147,7 +147,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="safe-bottom relative max-h-[85dvh] w-full overflow-y-auto rounded-t-[1.75rem] bg-surface p-5 md:mt-16 md:mr-4 md:w-96 md:rounded-[1.75rem]">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-surface-2">
+          <button onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-hover">
             <X className="size-5" />
           </button>
         </div>
@@ -283,7 +283,7 @@ function ThemePicker() {
           <button key={id} role="radio" aria-checked={theme === id}
             onClick={() => { applyTheme(id); setTheme(id); }}
             className={clsx("inline-flex h-9 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition",
-              theme === id ? "bg-forest text-forest-ink" : "text-ink-2 hover:bg-surface")}>
+              theme === id ? "bg-forest text-forest-ink" : "text-ink-2 hover:bg-hover")}>
             <Icon className="size-4" aria-hidden /> {label}
           </button>
         ))}

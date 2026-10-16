@@ -141,7 +141,7 @@ function UsersTab() {
                       {u.is_active ? "Disable" : "Enable"}
                     </Button>
                     <button aria-label={`Delete ${u.email}`} onClick={() => remove(u)}
-                      className="inline-grid size-9 place-items-center rounded-full align-middle text-danger hover:bg-surface-2">
+                      className="inline-grid size-9 place-items-center rounded-full align-middle text-danger hover:bg-hover">
                       <Trash2 className="size-4" />
                     </button>
                   </td>
@@ -268,7 +268,7 @@ function DealsTab() {
                 <div className="flex gap-1">
                   {d.status !== "active" && <Button size="sm" onClick={() => act(d.id, { status: "active", verified: true })}>Approve</Button>}
                   {d.status !== "rejected" && <Button size="sm" variant="outline" onClick={() => act(d.id, { status: "rejected" })}>Reject</Button>}
-                  <button aria-label="Delete deal" onClick={() => act(d.id, null)} className="grid size-9 place-items-center rounded-full text-danger hover:bg-surface"><Trash2 className="size-4" /></button>
+                  <button aria-label="Delete deal" onClick={() => act(d.id, null)} className="grid size-9 place-items-center rounded-full text-danger hover:bg-hover"><Trash2 className="size-4" /></button>
                 </div>
               </div>
             </li>

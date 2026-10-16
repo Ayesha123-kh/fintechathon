@@ -115,9 +115,9 @@ def upgrade() -> None:
     s.flush()
     s.add_all([
         Card(user_id=uid, bank_id=banks["Meezan"].id, account_id=meezan.id, network="visa", tier="platinum",
-             card_type="debit", label="Visa Platinum Debit Card of Meezan Bank", last4="4821"),
+             card_type="debit", label="Visa Platinum Debit Card of Meezan Bank"),
         Card(user_id=uid, bank_id=banks["HBL"].id, account_id=hbl.id, network="mastercard", tier="gold",
-             card_type="credit", label="Mastercard Gold Credit Card of Habib Bank Limited", last4="7703"),
+             card_type="credit", label="Mastercard Gold Credit Card of Habib Bank Limited"),
     ])
 
     # ------------------------------------------------------------------ goals

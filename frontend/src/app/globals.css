@@ -31,6 +31,7 @@
   --chart-save: #2e6a14;
   --chart-spend: #b0e454;
   --chart-track: #d2e8b4;
+  --hover: #d3ecac;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -50,6 +51,7 @@
     --chart-save: #4e8c22;
     --chart-spend: #b0e454;
     --chart-track: #242b1f;
+    --hover: #2a3323;
   }
 }
 
@@ -66,6 +68,7 @@
   --chart-save: #4e8c22;
   --chart-spend: #b0e454;
   --chart-track: #242b1f;
+  --hover: #2a3323;
 }
 
 @theme inline {
@@ -84,6 +87,7 @@
   --color-chart-save: var(--chart-save);
   --color-chart-spend: var(--chart-spend);
   --color-chart-track: var(--chart-track);
+  --color-hover: var(--hover);
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --radius-card: 1.5rem;
 }

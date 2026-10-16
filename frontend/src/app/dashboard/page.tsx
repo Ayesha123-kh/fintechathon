@@ -15,7 +15,7 @@ import { useSession } from "@/lib/session";
 type Dashboard = {
   total_balance: string; total_savings: string; expendable: string; saved_this_week: string;
   deal_savings_total: string; income_this_month: string; spent_this_month: string;
-  banks: { account_id: string; bank: string; bank_short: string; nickname: string; account_type: string; last4: string | null;
+  banks: { account_id: string; bank: string; bank_short: string; nickname: string; account_type: string;
     balance: string; savings: string; expendable: string }[];
   goals: { id: string; name: string; icon: string; status: string; target: string; saved: string; deadline: string | null;
     progress: number; monthly_needed: string }[];
@@ -190,7 +190,7 @@ function DashboardView({ d }: { d: Dashboard }) {
                     <button type="button" onClick={() => setBank(b.account_id)} aria-label={`${b.bank} details`}
                       className="flex h-full w-full flex-col items-center gap-2 rounded-2xl border-2 border-primary bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
                       <SplitDonut savings={Number(b.savings)} expendable={Number(b.expendable)} label={b.bank} size={96} thickness={12} />
-                      <p className="text-sm font-semibold">{b.bank_short}{b.last4 && <span className="font-normal text-muted"> ••{b.last4}</span>}</p>
+                      <p className="text-sm font-semibold">{b.bank_short}</p>
                       <dl className="tabular grid w-full grid-cols-2 gap-1 text-[11px]">
                         <div><dt className="text-muted">Savings</dt><dd className="font-semibold whitespace-nowrap">{rs(b.savings, { compact: true })}</dd></div>
                         <div><dt className="text-muted">Spendable</dt><dd className="font-semibold whitespace-nowrap">{rs(b.expendable, { compact: true })}</dd></div>

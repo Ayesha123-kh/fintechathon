@@ -320,18 +320,17 @@ async def remove_bank_account(member_key: str, account_id: str) -> dict:
 
 @mcp.tool()
 async def add_card(member_key: str, bank: str, network: Literal["visa", "mastercard", "unionpay", "paypak", "amex"],
-                   card_type: Literal["debit", "credit"] = "debit", tier: str | None = None,
-                   last4: str | None = None) -> dict:
+                   card_type: Literal["debit", "credit"] = "debit", tier: str | None = None) -> dict:
     """Save a debit/credit card, e.g. 'Visa Silver debit card of Meezan Bank' -> bank='Meezan Bank',
     network='visa', tier='silver', card_type='debit'. Cards decide which bank discounts apply.
-    Never ask for full card numbers, CVV or PINs."""
+    Only the card TYPE is stored: never ask for or save any card digits (not even the last 4), CVV, PIN or OTP."""
     async with member(member_key) as (s, uid):
         b = await _bank_by_name(s, bank)
         tier_txt = f" {tier.title()}" if tier else ""
         label = f"{network.title()}{tier_txt} {card_type.title()} Card of {b.name}"
         acc_id = await s.scalar(select(BankAccount.id).where(BankAccount.bank_id == b.id).limit(1))
         card = Card(user_id=uid, bank_id=b.id, network=network, tier=(tier or None) and tier.lower(),
-                    card_type=card_type, label=label, last4=last4, account_id=acc_id)
+                    card_type=card_type, label=label, account_id=acc_id)
         s.add(card)
         await s.flush()
         return {"ok": True, "card_id": str(card.id), "label": label}

@@ -132,13 +132,13 @@ async def bank_details(p: Principal = Depends(current_principal), s: AsyncSessio
                                .order_by(Transaction.occurred_at.desc()).limit(20))).scalars()
         accounts.append({**row,
                          "cards": [{"id": str(c.id), "label": c.label, "network": c.network, "tier": c.tier,
-                                    "type": c.card_type, "last4": c.last4}
+                                    "type": c.card_type}
                                    for c, _ in cards if c.account_id == acc_id],
                          "transactions": [{"id": str(t.id), "occurred_at": t.occurred_at, "amount": t.amount,
                                            "direction": t.direction, "merchant": t.merchant_raw,
                                            "category": t.category_slug} for t in txs]})
     unlinked = [{"id": str(c.id), "label": c.label, "bank": bank, "network": c.network, "tier": c.tier,
-                 "type": c.card_type, "last4": c.last4} for c, bank in cards if c.account_id is None]
+                 "type": c.card_type} for c, bank in cards if c.account_id is None]
     return {"total_balance": data["total_balance"], "total_savings": data["total_savings"],
             "expendable": data["expendable"], "accounts": accounts, "other_cards": unlinked}
 

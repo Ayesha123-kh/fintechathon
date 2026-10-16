@@ -317,7 +317,7 @@ async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
             earmarked += money(unassigned * money(account.balance) / total_balance)
         banks.append({
             "account_id": str(account.id), "bank": bank.name, "bank_short": bank.short_name,
-            "nickname": account.nickname, "account_type": account.account_type, "last4": account.last4,
+            "nickname": account.nickname, "account_type": account.account_type,
             "balance": money(account.balance), "savings": min(earmarked, max(money(account.balance), Decimal(0))),
             "expendable": max(money(account.balance) - earmarked, Decimal(0)),
         })

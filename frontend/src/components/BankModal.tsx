@@ -7,9 +7,9 @@ import { fetcher, rs } from "@/lib/api";
 import { SplitDonut } from "./charts";
 import { Spinner } from "./ui";
 
-type CardRow = { id: string; label: string; network: string; tier: string | null; type: string; last4: string | null };
+type CardRow = { id: string; label: string; network: string; tier: string | null; type: string };
 type Account = {
-  account_id: string; bank: string; bank_short: string; nickname: string; account_type: string; last4: string | null;
+  account_id: string; bank: string; bank_short: string; nickname: string; account_type: string;
   balance: string; savings: string; expendable: string; cards: CardRow[];
   transactions: { id: string; occurred_at: string; amount: string; direction: string; merchant: string; category: string }[];
 };
@@ -39,7 +39,7 @@ export function BankModal({ accountId, onClose }: { accountId: string; onClose: 
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
       <section className="safe-bottom relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[1.75rem] border-2 border-forest bg-surface p-5 md:max-w-lg md:rounded-[1.75rem]">
         <button ref={closeRef} onClick={onClose} aria-label="Close"
-          className="absolute top-4 right-4 grid size-9 place-items-center rounded-full hover:bg-surface-2">
+          className="absolute top-4 right-4 grid size-9 place-items-center rounded-full hover:bg-hover">
           <X className="size-5" />
         </button>
         {!data ? (
@@ -52,7 +52,7 @@ export function BankModal({ accountId, onClose }: { accountId: string; onClose: 
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-forest text-forest-ink"><Landmark className="size-5" aria-hidden /></span>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{account.bank}</p>
-                <p className="text-xs capitalize text-muted">{account.account_type} account{account.last4 && ` ••${account.last4}`}</p>
+                <p className="text-xs capitalize text-muted">{account.account_type} account</p>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between gap-4">
@@ -75,7 +75,6 @@ export function BankModal({ accountId, onClose }: { accountId: string; onClose: 
                   <div key={c.id} className="flex items-center gap-3 rounded-2xl border-2 border-primary bg-surface-2 px-3.5 py-2.5">
                     <CreditCard className="size-5 text-forest dark:text-primary" aria-hidden />
                     <p className="flex-1 text-sm font-medium">{c.label}</p>
-                    {c.last4 && <span className="tabular text-xs text-muted">••{c.last4}</span>}
                   </div>
                 ))}
               </div>

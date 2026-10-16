@@ -71,7 +71,7 @@ def test_simulated_alerts_parse_like_real_ones():
 
     bank = Bank(name="Meezan Bank", short_name="Meezan", email_domains=["meezanbank.com"])
     account = BankAccount(balance=Decimal("50000"), last4="4821")
-    card = Card(network="visa", last4="4821")
+    card = Card(network="visa", card_type="debit")
     for direction in ("debit", "credit"):
         subject, text, _html, info = build_alert(bank, account, card, direction)
         parsed = regex_parse(f"{subject}. {text}")

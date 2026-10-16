@@ -28,8 +28,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         {
           "bg-primary text-primary-ink hover:brightness-95": variant === "primary",
           "bg-forest text-forest-ink hover:brightness-110": variant === "forest",
-          "bg-transparent text-ink hover:bg-surface-2": variant === "ghost",
-          "border border-line bg-surface text-ink hover:bg-surface-2": variant === "outline",
+          "bg-transparent text-ink hover:bg-hover": variant === "ghost",
+          "border border-line bg-surface text-ink hover:bg-hover": variant === "outline",
           "bg-danger text-white hover:brightness-110": variant === "danger",
           "h-9 px-4 text-sm": size === "sm",
           "h-11 px-5 text-[15px]": size === "md",
@@ -71,7 +71,7 @@ export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTML
               onClick={() => setVisible((v) => !v)}
               aria-label={visible ? "Hide password" : "Show password"}
               aria-pressed={visible}
-              className="absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-surface hover:text-ink"
+              className="absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-hover hover:text-ink"
             >
               {visible ? <EyeOff className="size-5" aria-hidden /> : <Eye className="size-5" aria-hidden />}
             </button>

@@ -95,10 +95,10 @@ function EmailInner() {
                       {c.last_synced_at && ` · checked ${new Date(c.last_synced_at).toLocaleString("en-PK", { hour: "numeric", minute: "2-digit", day: "numeric", month: "short" })}`}
                     </p>
                   </div>
-                  <button aria-label="Check now" onClick={() => act(c.id, "sync")} className="grid size-9 place-items-center rounded-full hover:bg-surface">
+                  <button aria-label="Check now" onClick={() => act(c.id, "sync")} className="grid size-9 place-items-center rounded-full hover:bg-hover">
                     <RefreshCw className={busy === c.id + "sync" ? "size-4 animate-spin" : "size-4"} />
                   </button>
-                  <button aria-label="Disconnect" onClick={() => act(c.id, "remove")} className="grid size-9 place-items-center rounded-full text-danger hover:bg-surface">
+                  <button aria-label="Disconnect" onClick={() => act(c.id, "remove")} className="grid size-9 place-items-center rounded-full text-danger hover:bg-hover">
                     <Trash2 className="size-4" />
                   </button>
                 </div>
