@@ -33,6 +33,20 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const openRef = useRef(open);
   openRef.current = open;
 
+  // On phones the chat covers the screen: freeze the page underneath so only the messages scroll.
+  // (position: fixed is what stops iOS Safari from scrolling the body behind an overlay.)
+  useEffect(() => {
+    if (!open || !window.matchMedia("(max-width: 767px)").matches) return;
+    const y = window.scrollY;
+    const body = document.body.style;
+    const prev = { position: body.position, top: body.top, left: body.left, right: body.right, overflow: body.overflow };
+    Object.assign(body, { position: "fixed", top: `-${y}px`, left: "0", right: "0", overflow: "hidden" });
+    return () => {
+      Object.assign(body, prev);
+      window.scrollTo(0, y);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (params.get("chat") === "1") setOpen(true);
   }, [params]);
@@ -195,7 +209,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
       {open && (
         <div role="dialog" aria-label="Chat"
           className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:inset-auto md:right-6 md:bottom-6 md:p-0">
-          <div className="absolute inset-0 bg-ink/30 md:hidden" onClick={close} />
+          <div className="absolute inset-0 touch-none bg-ink/30 md:hidden" onClick={close} />
           <section className="relative flex h-full max-h-[760px] w-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border-2 border-primary bg-surface shadow-2xl dark:border-forest md:h-[640px] md:max-h-[calc(100dvh-3rem)] md:w-[400px]">
             <header className="flex items-center gap-3 bg-forest px-4 py-3.5 text-forest-ink">
               <div className="grid size-10 place-items-center rounded-full bg-primary text-primary-ink">
@@ -212,7 +226,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
               </button>
             </header>
 
-            <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto bg-bg/60 px-3 py-4">
+            <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-bg/60 px-3 py-4">
               {messages.length === 0 && (
                 <div className="mx-auto max-w-[85%] rounded-3xl bg-surface p-4 text-center text-sm text-ink-2">
                   Assalam o Alaikum{user?.full_name ? ` ${user.full_name.split(" ")[0]}` : ""}! 👋 I&apos;m your savings
@@ -242,7 +256,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
             </div>
 
             {messages.length < 3 && !waiting && (
-              <div className="flex gap-2 overflow-x-auto px-3 pt-2">
+              <div className="flex gap-2 overflow-x-auto overscroll-x-contain px-3 pt-2">
                 {suggestions.map((s) => (
                   <button key={s} onClick={() => send(s)} className="shrink-0 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-medium">
                     {s}
