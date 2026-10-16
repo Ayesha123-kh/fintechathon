@@ -6,7 +6,7 @@ import Image from "next/image";
 import { forwardRef, useState } from "react";
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={clsx("rounded-[var(--radius-card)] border border-forest bg-surface p-5", className)} {...props} />;
+  return <div className={clsx("rounded-[var(--radius-card)] border-2 border-forest bg-surface p-5", className)} {...props} />;
 }
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {

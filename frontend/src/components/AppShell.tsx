@@ -209,7 +209,7 @@ function SettingsPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-primary bg-surface-2 p-4">
+      <div className="rounded-2xl border-2 border-primary bg-surface-2 p-4">
         <p className="font-semibold">{user?.full_name}</p>
         <p className="text-sm text-muted">{user?.email}</p>
       </div>
