@@ -21,7 +21,8 @@ export function Donut({
   label: string;
 }) {
   const [hover, setHover] = useState<string>("");
-  const r = (size - thickness) / 2;
+  const grow = 4; // extra stroke on hover; the radius leaves room so the ring never touches the edge
+  const r = (size - thickness - grow) / 2;
   const c = 2 * Math.PI * r;
   const total = segments.reduce((a, s) => a + Math.max(s.value, 0), 0);
   const visible = segments.filter((s) => s.value > 0);
@@ -30,7 +31,7 @@ export function Donut({
   const active = segments.find((s) => s.key === hover);
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label={label} className="-rotate-90">
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label={label} className="-rotate-90 overflow-visible">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={thickness} className="stroke-chart-track" />
         {total > 0 &&
           visible.map((s) => {
@@ -42,7 +43,7 @@ export function Donut({
                 cy={size / 2}
                 r={r}
                 fill="none"
-                strokeWidth={hover === s.key ? thickness + 3 : thickness}
+                strokeWidth={hover === s.key ? thickness + grow : thickness}
                 strokeLinecap="butt"
                 strokeDasharray={`${len} ${c - len}`}
                 strokeDashoffset={-offset}

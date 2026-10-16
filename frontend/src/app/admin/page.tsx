@@ -254,7 +254,7 @@ function DealsTab() {
       {!data ? <Spinner /> : data.length === 0 ? <p className="text-sm text-muted">No deals here.</p> : (
         <ul className="space-y-2">
           {data.map((d) => (
-            <li key={d.id} className="rounded-2xl bg-surface-2 p-3.5 text-sm">
+            <li key={d.id} className="rounded-2xl border border-primary bg-surface-2 p-3.5 text-sm">
               <div className="flex flex-wrap items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{d.merchant} · {d.title}</p>

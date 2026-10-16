@@ -149,7 +149,7 @@ function DashboardView({ d }: { d: Dashboard }) {
                 {d.goals.map((g) => (
                   <li key={g.id}>
                     <Link href={`/goals/${g.id}`}
-                      className="flex h-full flex-col items-center gap-2 rounded-2xl bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
+                      className="flex h-full flex-col items-center gap-2 rounded-2xl border border-primary bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
                       <ProgressRing value={g.progress} size={88} thickness={9} label={`${g.name} progress`}>
                         <div className="flex flex-col items-center">
                           <GoalIconGlyph name={g.icon} />
@@ -185,7 +185,7 @@ function DashboardView({ d }: { d: Dashboard }) {
                 {d.banks.map((b) => (
                   <li key={b.account_id}>
                     <Link href={`/banks#${b.account_id}`}
-                      className="flex h-full flex-col items-center gap-2 rounded-2xl bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
+                      className="flex h-full flex-col items-center gap-2 rounded-2xl border border-primary bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
                       <SplitDonut savings={Number(b.savings)} expendable={Number(b.expendable)} label={b.bank} size={96} thickness={12} />
                       <p className="text-sm font-semibold">{b.bank_short}{b.last4 && <span className="font-normal text-muted"> ••{b.last4}</span>}</p>
                       <dl className="tabular grid w-full grid-cols-2 gap-1 text-[11px]">
@@ -242,7 +242,7 @@ function DashboardView({ d }: { d: Dashboard }) {
             ) : (
               <ul className="space-y-2.5">
                 {d.deals_for_you.map((deal) => (
-                  <li key={deal.id} className="rounded-2xl bg-surface-2 p-3.5">
+                  <li key={deal.id} className="rounded-2xl border border-primary bg-surface-2 p-3.5">
                     <div className="flex items-start gap-3">
                       <span className="tabular grid min-w-14 place-items-center rounded-xl bg-primary px-2 py-1.5 text-sm font-bold text-primary-ink">
                         {deal.discount_type === "percent" && deal.discount_value ? `${deal.discount_value}%` : deal.discount_type === "flat" && deal.discount_value ? rs(deal.discount_value, { compact: true }) : deal.discount_type === "bogo" ? "1+1" : "Deal"}

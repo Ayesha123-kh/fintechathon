@@ -85,7 +85,7 @@ function EmailInner() {
         ) : (
           <ul className="space-y-3">
             {data.connections.map((c) => (
-              <li key={c.id} className="rounded-2xl bg-surface-2 p-4">
+              <li key={c.id} className="rounded-2xl border border-primary bg-surface-2 p-4">
                 <div className="flex items-center gap-3">
                   <Mail className="size-5 text-muted" aria-hidden />
                   <div className="min-w-0 flex-1">

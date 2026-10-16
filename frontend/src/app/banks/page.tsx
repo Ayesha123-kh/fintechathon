@@ -99,7 +99,7 @@ export default function BanksPage() {
 
 function CardChip({ c }: { c: CardRow }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-surface-2 px-3.5 py-2.5">
+    <div className="flex items-center gap-3 rounded-2xl border border-primary bg-surface-2 px-3.5 py-2.5">
       <CreditCard className="size-5 text-forest dark:text-primary" aria-hidden />
       <p className="flex-1 text-sm font-medium">{c.label}</p>
       {c.last4 && <span className="tabular text-xs text-muted">••{c.last4}</span>}
