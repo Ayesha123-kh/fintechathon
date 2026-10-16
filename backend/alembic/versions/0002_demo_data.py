@@ -82,7 +82,7 @@ def upgrade() -> None:
     now = datetime.now(UTC)
 
     # ------------------------------------------------------------------ users
-    user = User(email=DEMO_USER, password_hash=hash_password("demo12345"), full_name="Ayesha Siddiqui",
+    user = User(email=DEMO_USER, password_hash=hash_password("demo12345"), full_name="Osama",
                 role="user", email_verified=True, onboarding_completed=True, last_login_at=now - timedelta(days=1))
     admin = User(email=DEMO_ADMIN, password_hash=hash_password("admin12345"), full_name="Bachat Admin",
                  role="admin", email_verified=True, onboarding_completed=True)
@@ -311,13 +311,13 @@ def upgrade() -> None:
 
     # ------------------------------------------------------------------ memory, notifications, chat
     for fact, cat, ago in [("Got a 15% increment in July (salary now Rs. 150,000)", "income", 95),
-                           ("Wants to take her parents for Umrah before Ramadan", "goals", 110),
+                           ("Wants to take their parents for Umrah before Ramadan", "goals", 110),
                            ("Prefers Roman Urdu or English, short answers", "preferences", 110),
                            ("Eats out most Friday nights, usually KFC or Cheezious", "habits", 60)]:
         s.add(UserFact(user_id=uid, fact=fact, category=cat, created_at=now - timedelta(days=ago)))
 
     for kind, title, body, url, ago, read in [
-        ("motivation", "Great job, Ayesha! 🌱", "You saved Rs. 9,120 this week. Keep it up!", "/dashboard", 6, True),
+        ("motivation", "Great job, Osama! 🌱", "You saved Rs. 9,120 this week. Keep it up!", "/dashboard", 6, True),
         ("deal", "Friday deal at KFC", "20% off with your Meezan Visa Platinum tonight.", "/dashboard", 6, True),
         ("sadqah", "Sadqah reminder 🤲", "Your planned sadqah: Rs. 2,000.", "/dashboard?chat=1", 6, True),
         ("goal", "Goal reached! 🎉", "You've fully saved for “New laptop”. Mubarak ho!", f"/goals/{laptop.id}", 40, True),
@@ -329,7 +329,7 @@ def upgrade() -> None:
 
     convo = [
         (118, "user", "you", "Assalam o alaikum! I want to start saving properly."),
-        (118, "bot", "Finance Assistant", "Walaikum assalam Ayesha! 👋 Let's set up your plan. Which banks or wallets do you use?"),
+        (118, "bot", "Finance Assistant", "Walaikum assalam Osama! 👋 Let's set up your plan. Which banks or wallets do you use?"),
         (118, "user", "you", "Meezan for salary, HBL for savings and JazzCash."),
         (118, "bot", "Finance Assistant", "Got it, all 3 saved. Which cards do you have?"),
         (118, "user", "you", "Meezan Visa Platinum debit and HBL Mastercard Gold credit card"),
