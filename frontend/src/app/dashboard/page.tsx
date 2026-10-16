@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import useSWR from "swr";
 import { AppShell, openSettings } from "@/components/AppShell";
+import { MobileTabBar, type Tab, useMobileTab } from "@/components/MobileTabBar";
 import { BankModal } from "@/components/BankModal";
 import { CategoryBars, Donut, ProgressRing, SplitDonut, SplitLegend } from "@/components/charts";
 import { GoalIconGlyph } from "@/components/GoalIcon";
@@ -37,18 +38,22 @@ export default function DashboardPage() {
 function DashboardView({ d }: { d: Dashboard }) {
   const { user } = useSession();
   const [bank, setBank] = useState<string | null>(null);
+  const [tab, setTab] = useMobileTab();
+  // On phones only the active tab's sections are shown; laptops always show everything.
+  const on = (t: Tab) => (tab === t ? "" : "max-md:hidden");
   const first = user?.full_name?.split(" ")[0];
   const hasData = d.banks.length > 0 || d.goals.length > 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-md:pb-24">
       {bank && <BankModal accountId={bank} onClose={() => setBank(null)} />}
-      <div>
+      <MobileTabBar tab={tab} onChange={setTab} />
+      <div className={on("home")}>
         <p className="text-sm text-muted">Assalam o Alaikum{first ? `, ${first}` : ""}</p>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Your money at a glance</h1>
       </div>
 
-      {!user?.onboarding_completed && (
+      {!user?.onboarding_completed && tab === "home" && (
         <Link href="?chat=1" className="flex items-center gap-4 rounded-[var(--radius-card)] bg-forest p-5 text-forest-ink">
           <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-ink">
             <MessageCircle className="size-6" aria-hidden />
@@ -61,7 +66,7 @@ function DashboardView({ d }: { d: Dashboard }) {
         </Link>
       )}
 
-      <Card className="flex items-center justify-between gap-4 md:p-7">
+      <Card className={`flex items-center justify-between gap-4 md:p-7 ${on("home")}`}>
         <div className="min-w-0 space-y-4">
           <div>
             <p className="text-sm text-muted">Total balance</p>
@@ -129,7 +134,7 @@ function DashboardView({ d }: { d: Dashboard }) {
       </Card>
 
       {!d.email_connected && hasData && (
-        <button type="button" onClick={() => openSettings("email")} className="flex w-full items-center gap-3 text-left rounded-[var(--radius-card)] border border-dashed border-forest/40 bg-surface p-4">
+        <button type="button" onClick={() => openSettings("email")} className={`flex w-full items-center gap-3 text-left ${on("home")} rounded-[var(--radius-card)] border border-dashed border-forest/40 bg-surface p-4`}>
           <Mail className="size-5 text-forest dark:text-primary" aria-hidden />
           <p className="flex-1 text-sm"><span className="font-semibold">Connect your email</span> to track bank transactions automatically.</p>
           <ChevronRight className="size-4 text-muted" aria-hidden />
@@ -138,7 +143,7 @@ function DashboardView({ d }: { d: Dashboard }) {
 
       <div className="grid gap-5 lg:grid-cols-5">
         <div className="space-y-5 lg:col-span-3">
-          <Card>
+          <Card className={on("goals")}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Goals</h2>
               <Target className="size-5 text-muted" aria-hidden />
@@ -176,7 +181,7 @@ function DashboardView({ d }: { d: Dashboard }) {
             )}
           </Card>
 
-          <Card>
+          <Card className={on("home")}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-bold">Where your money is</h2>
               <SplitLegend />
@@ -202,12 +207,12 @@ function DashboardView({ d }: { d: Dashboard }) {
             )}
           </Card>
 
-          <Card>
+          <Card className={on("activity")}>
             <h2 className="mb-3 text-lg font-bold">Recent activity</h2>
             {d.recent_transactions.length === 0 ? (
               <p className="py-4 text-sm text-muted">Transactions from your bank emails or chat appear here.</p>
             ) : (
-              <ul className="-mr-2 max-h-[22rem] divide-y divide-line overflow-y-auto overscroll-contain pr-2">
+              <ul className="divide-y divide-line md:-mr-2 md:max-h-[22rem] md:overflow-y-auto md:overscroll-contain md:pr-2">
                 {d.recent_transactions.map((t) => (
                   <li key={t.id} className="flex items-center gap-3 py-2.5">
                     <span className="grid size-9 place-items-center rounded-full bg-surface-2">
@@ -226,7 +231,7 @@ function DashboardView({ d }: { d: Dashboard }) {
         </div>
 
         <div className="space-y-5 lg:col-span-2">
-          <Card>
+          <Card className={on("spending")}>
             <h2 className="mb-4 text-lg font-bold">Spending this month</h2>
             {d.spending_by_category.length === 0 ? (
               <p className="py-4 text-sm text-muted">No spending recorded yet this month.</p>
@@ -235,7 +240,7 @@ function DashboardView({ d }: { d: Dashboard }) {
             )}
           </Card>
 
-          <Card>
+          <Card className={on("deals")}>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-bold">Deals for you</h2>
               <Tag className="size-5 text-muted" aria-hidden />

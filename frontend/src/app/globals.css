@@ -154,3 +154,13 @@ body {
     animation: none;
   }
 }
+
+/* Space the chat button keeps above the phone tab bar. */
+:root {
+  --bottom-nav: 0px;
+}
+@media (max-width: 767px) {
+  :root.has-bottom-nav {
+    --bottom-nav: 4.5rem;
+  }
+}

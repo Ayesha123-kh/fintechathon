@@ -205,7 +205,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     <>
       {!open && preview && (
         <div role="status" aria-live="polite"
-          className="bubble-pop fixed right-4 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 w-[min(20rem,calc(100vw-2rem))]">
+          className="bubble-pop fixed right-4 bottom-[calc(var(--bottom-nav)+6.25rem+env(safe-area-inset-bottom))] z-40 w-[min(20rem,calc(100vw-2rem))]">
           <button onClick={() => setOpen(true)}
             className="relative block w-full rounded-3xl rounded-br-lg border-2 border-primary bg-surface px-4 py-3 text-left shadow-xl transition hover:brightness-[0.98] dark:border-forest">
             <span className="mb-0.5 flex items-center gap-1 pr-6 text-[11px] font-semibold text-muted">
@@ -225,7 +225,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
         <button
           onClick={() => setOpen(true)}
           aria-label="Open chat with your assistant"
-          className="fixed right-4 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-40 grid size-15 place-items-center rounded-full bg-forest text-forest-ink shadow-lg shadow-forest/30 transition hover:scale-105"
+          className="fixed right-4 bottom-[calc(var(--bottom-nav)+1.5rem+env(safe-area-inset-bottom))] z-40 grid size-15 place-items-center rounded-full bg-forest text-forest-ink shadow-lg shadow-forest/30 transition hover:scale-105"
         >
           <MessageCircle className="size-7" aria-hidden />
           {unread > 0 && (
