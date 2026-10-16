@@ -24,6 +24,8 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
   const [unread, setUnread] = useState(0);
+  // Latest message that arrived while the chat was closed, shown as a bubble above the chat button.
+  const [preview, setPreview] = useState<Msg | null>(null);
   // Last time the chat was read when this panel was opened: messages after it get a "New messages" divider.
   const [readAt, setReadAt] = useState<string | null>(null);
   const readAtRef = useRef<string | null>(null);
@@ -76,7 +78,10 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
       });
       if (msg.role === "bot" || msg.role === "system") {
         setWaiting(false);
-        if (!openRef.current && msg.final) setUnread((u) => u + 1);
+        if (!openRef.current && msg.final) {
+          setUnread((u) => u + 1);
+          setPreview(msg);
+        }
         onActivity?.();
       }
     };
@@ -104,7 +109,14 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   }, []);
 
   useEffect(() => {
+    if (!preview) return;
+    const t = setTimeout(() => setPreview(null), 10_000);
+    return () => clearTimeout(t);
+  }, [preview]);
+
+  useEffect(() => {
     if (!open) return;
+    setPreview(null);
     setReadAt(readAtRef.current ?? "1970-01-01T00:00:00Z");
     setUnread(0);
     api("/chat/read", { method: "POST" }).catch(() => {});
@@ -191,6 +203,24 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
 
   return (
     <>
+      {!open && preview && (
+        <div role="status" aria-live="polite"
+          className="bubble-pop fixed right-4 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-40 w-[min(20rem,calc(100vw-2rem))]">
+          <button onClick={() => setOpen(true)}
+            className="relative block w-full rounded-3xl rounded-br-lg border-2 border-primary bg-surface px-4 py-3 text-left shadow-xl transition hover:brightness-[0.98] dark:border-forest">
+            <span className="mb-0.5 flex items-center gap-1 pr-6 text-[11px] font-semibold text-muted">
+              {preview.kind === "notification" ? <Bell className="size-3" aria-hidden /> : <MessageCircle className="size-3" aria-hidden />}
+              {preview.sender || "Your assistant"}
+            </span>
+            <span className="line-clamp-3 text-sm text-ink">{plain(preview.text)}</span>
+          </button>
+          <button onClick={() => setPreview(null)} aria-label="Dismiss"
+            className="absolute top-2 right-2 grid size-7 place-items-center rounded-full text-muted hover:bg-hover">
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
       {!open && (
         <button
           onClick={() => setOpen(true)}
@@ -310,6 +340,12 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
       )}
     </>
   );
+}
+
+/** Markdown-free one-liner for the preview bubble. */
+function plain(text: string): string {
+  return text.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/_([^_]+)_/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\s*\n+\s*/g, " · ").trim();
 }
 
 function isAfter(when: string | null, ref: string) {
