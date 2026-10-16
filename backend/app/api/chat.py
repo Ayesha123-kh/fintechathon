@@ -108,7 +108,7 @@ async def stream(p: Principal = Depends(passive_principal)) -> StreamingResponse
             await redis.delete(presence_key(user_id))
 
     return StreamingResponse(events(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+                             headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"})
 
 
 @router.post("/reset-room")

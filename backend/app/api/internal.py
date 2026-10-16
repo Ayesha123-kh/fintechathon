@@ -43,29 +43,36 @@ async def omb_events(events: list[OmbEvent]) -> dict:
     """Bot replies in users' rooms, relayed from the OpenMausBot event stream."""
     handled = 0
     for ev in events:
-        if ev.message.role != "bot" or ev.message.kind != "text" or not ev.message.text.strip():
+        if ev.message.role != "bot" or ev.message.kind not in ("text", "error") or not ev.message.text.strip():
             continue
+        is_error = ev.message.kind == "error"
         async with system_session() as s:
             user_id = await s.scalar(select(ChatRoom.user_id).where(ChatRoom.omb_thread_id == ev.thread_id))
         if not user_id:
             continue
         # Defence in depth: never show the member key even if a bot repeats it.
         text = _KEY_LEAK.sub("•••", ev.message.text)
+        if is_error:
+            log.warning("assistant turn failed for %s: %s", user_id, text)
+            text = ("Your assistant couldn't reply just now (the AI service is unreachable). "
+                    "Please try again in a moment.")
         async with scoped_session(user_id, "user") as s:
             stmt = insert(ChatMessage).values(
-                user_id=user_id, omb_message_id=ev.message.id, role="bot", sender=ev.message.sender[:80],
-                text=text, kind="text", final=ev.message.final,
+                user_id=user_id, omb_message_id=ev.message.id, role="system" if is_error else "bot",
+                sender="" if is_error else ev.message.sender[:80], text=text,
+                kind="error" if is_error else "text", final=ev.message.final,
             ).on_conflict_do_update(
                 index_elements=["omb_message_id"],
                 set_={"text": text, "final": ev.message.final, "sender": ev.message.sender[:80]},
             ).returning(ChatMessage.id, ChatMessage.created_at)
             row = (await s.execute(stmt)).one()
         payload = {"type": "message", "message": {
-            "id": str(row.id), "role": "bot", "sender": ev.message.sender, "text": text, "kind": "text",
+            "id": str(row.id), "role": "system" if is_error else "bot", "sender": "" if is_error else ev.message.sender,
+            "text": text, "kind": "error" if is_error else "text",
             "final": ev.message.final, "created_at": row.created_at.isoformat(),
         }}
         await redis.publish(chat_channel(str(user_id)), json.dumps(payload))
-        if ev.message.final:
+        if ev.message.final and not is_error:
             snippet = text if len(text) <= 160 else text[:157] + "…"
             await notify(user_id, "chat", ev.message.sender or "Your assistant", snippet, url="/dashboard?chat=1",
                          only_if_offline=True)

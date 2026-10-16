@@ -56,7 +56,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
         }
         return [...prev, msg];
       });
-      if (msg.role === "bot") {
+      if (msg.role === "bot" || msg.role === "system") {
         setWaiting(false);
         if (!openRef.current && msg.final) setUnread((u) => u + 1);
         onActivity?.();
@@ -85,6 +85,16 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, waiting, open]);
+
+  // If no reply (and no error notice) arrives, don't leave the person staring at "Thinking…".
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setTimeout(() => {
+      setWaiting(false);
+      setError("Your assistant is taking longer than usual. You'll get a notification when it replies.");
+    }, 90_000);
+    return () => clearTimeout(t);
+  }, [waiting]);
 
   const send = useCallback(async (value: string) => {
     const t = value.trim();
@@ -153,9 +163,10 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end md:inset-auto md:right-6" role="dialog" aria-label="Chat">
+        <div role="dialog" aria-label="Chat"
+          className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:inset-auto md:right-6 md:bottom-6 md:p-0">
           <div className="absolute inset-0 bg-ink/30 md:hidden" onClick={close} />
-          <section className="relative flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-[1.75rem] bg-surface shadow-2xl md:h-[640px] md:w-[400px] md:rounded-[1.75rem]">
+          <section className="relative flex h-full max-h-[760px] w-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border-2 border-primary bg-surface shadow-2xl dark:border-forest md:h-[640px] md:max-h-[calc(100dvh-3rem)] md:w-[400px]">
             <header className="flex items-center gap-3 bg-forest px-4 py-3.5 text-forest-ink">
               <div className="grid size-10 place-items-center rounded-full bg-primary text-primary-ink">
                 <MessageCircle className="size-5" aria-hidden />
@@ -205,7 +216,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                 e.preventDefault();
                 send(text);
               }}
-              className="safe-bottom flex items-end gap-2 border-t border-line px-3 pt-3"
+              className="flex items-end gap-2 border-t border-line px-3 py-3"
             >
               <textarea
                 value={text}
@@ -248,6 +259,13 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
 
 function Bubble({ m }: { m: Msg }) {
   const mine = m.role === "user";
+  if (m.role === "system") {
+    return (
+      <p role="status" className="mx-auto max-w-[90%] rounded-2xl border border-danger/40 bg-danger/10 px-3 py-2 text-center text-xs text-danger">
+        {m.text}
+      </p>
+    );
+  }
   return (
     <div className={clsx("flex flex-col", mine ? "items-end" : "items-start")}>
       {!mine && m.sender && <span className="mb-1 px-2 text-[11px] font-semibold text-muted">{m.sender}</span>}

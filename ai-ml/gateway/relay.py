@@ -73,11 +73,20 @@ class Relay:
             return
         thread_id = event.get("threadId")
         msg = event.get("message") or {}
-        if thread_id not in self.room_threads or msg.get("role") != "bot" or msg.get("kind") != "text":
+        if thread_id not in self.room_threads or msg.get("role") != "bot":
+            return
+        tool = msg.get("tool") or {}
+        if msg.get("kind") == "activity" and tool.get("terminal") and tool.get("ok") is False:
+            # The turn died (model unreachable, timeout ...). Tell the person instead of leaving them waiting.
+            self._pending[msg["id"]] = {"thread_id": thread_id, "kind": "error", "sender": "",
+                                        "text": str(tool.get("name") or "error"), "last_sent": 0.0,
+                                        "last_change": time.time() - settings.relay_final_after_seconds}
+            return
+        if msg.get("kind") != "text":
             return
         sender = (msg.get("from") or {}).get("name") or (msg.get("sender") or {}).get("name") or ""
         entry = self._pending.setdefault(msg["id"], {"last_sent": 0.0})
-        entry.update(thread_id=thread_id, text=msg.get("text") or "", sender=sender.split(" · ")[0],
+        entry.update(thread_id=thread_id, kind="text", text=msg.get("text") or "", sender=sender.split(" · ")[0],
                      last_change=time.time())
 
     async def flusher(self) -> None:
@@ -92,7 +101,7 @@ class Relay:
                 final = now - e["last_change"] >= settings.relay_final_after_seconds
                 if final or e["last_change"] > e["last_sent"]:
                     batch.append({"thread_id": e["thread_id"], "message": {
-                        "id": mid, "role": "bot", "kind": "text", "text": e["text"], "sender": e["sender"],
+                        "id": mid, "role": "bot", "kind": e.get("kind", "text"), "text": e["text"], "sender": e["sender"],
                         "final": final}})
                     e["last_sent"] = now
                 if final:

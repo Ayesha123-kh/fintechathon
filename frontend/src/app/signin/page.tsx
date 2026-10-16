@@ -3,7 +3,7 @@
 import { Fingerprint } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthShell } from "@/components/AuthShell";
 import { Button, ErrorText, Input } from "@/components/ui";
 import { api, errorText } from "@/lib/api";
@@ -16,6 +16,8 @@ export default function SignIn() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"" | "pw" | "bio">("");
   const { setUser, reload } = useSession();
+  const [canPasskey, setCanPasskey] = useState(false);
+  useEffect(() => setCanPasskey(passkeySupported()), []);
   const router = useRouter();
 
   const done = async (u: User) => {
@@ -66,7 +68,7 @@ export default function SignIn() {
         <ErrorText>{error}</ErrorText>
         <Button type="submit" size="lg" className="w-full" loading={busy === "pw"}>Sign in</Button>
       </form>
-      {passkeySupported() && (
+      {canPasskey && (
         <>
           <div className="my-5 flex items-center gap-3 text-xs text-muted">
             <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
