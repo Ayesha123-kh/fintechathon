@@ -1,13 +1,13 @@
 "use client";
 
 import clsx from "clsx";
-import { Loader2, MessageCircle, Mic, Send, Square, X } from "lucide-react";
+import { Bell, Loader2, MessageCircle, Mic, Send, Square, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { api, errorText } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
-type Msg = { id: string; role: "user" | "bot" | "system"; sender: string; text: string; final: boolean; created_at: string | null };
+type Msg = { id: string; role: "user" | "bot" | "system"; sender: string; text: string; kind?: string; final: boolean; created_at: string | null };
 
 const SUGGESTIONS_NEW = ["Let's set up my savings", "I want to save for a car", "Which banks do you support?"];
 const SUGGESTIONS = ["How much did I spend this week?", "Any deals for my cards today?", "I got a salary increment", "Am I on track for my goals?"];
@@ -24,6 +24,10 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
   const [unread, setUnread] = useState(0);
+  // Last time the chat was read when this panel was opened: messages after it get a "New messages" divider.
+  const [readAt, setReadAt] = useState<string | null>(null);
+  const readAtRef = useRef<string | null>(null);
+  const dividerRef = useRef<HTMLDivElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
@@ -77,14 +81,40 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   }, [onActivity]);
 
   useEffect(() => {
-    if (!open) return;
-    setUnread(0);
-    api<{ status: string }>("/chat/status").then((s) => setStatus(s.status)).catch(() => setStatus("error"));
-  }, [open]);
+    api<{ count: number; read_at: string | null }>("/chat/unread")
+      .then((u) => {
+        setUnread(u.count);
+        readAtRef.current = u.read_at;
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, waiting, open]);
+    if (!open) return;
+    setReadAt(readAtRef.current ?? "1970-01-01T00:00:00Z");
+    setUnread(0);
+    api("/chat/read", { method: "POST" }).catch(() => {});
+    api<{ status: string }>("/chat/status").then((s) => setStatus(s.status)).catch(() => setStatus("error"));
+    return () => {
+      // Everything seen in this session is read now.
+      readAtRef.current = new Date().toISOString();
+    };
+  }, [open]);
+
+  const jumped = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      jumped.current = false;
+      return;
+    }
+    if (!jumped.current && dividerRef.current && listRef.current) {
+      jumped.current = true;
+      listRef.current.scrollTo({ top: dividerRef.current.offsetTop - 12 });
+      return;
+    }
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: jumped.current ? "smooth" : "auto" });
+    if (messages.length) jumped.current = true;
+  }, [messages, waiting, open, readAt]);
 
   // If no reply (and no error notice) arrives, don't leave the person staring at "Thinking…".
   useEffect(() => {
@@ -190,9 +220,20 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                   with you. English, Urdu or Roman Urdu are all fine.
                 </div>
               )}
-              {messages.map((m) => (
-                <Bubble key={m.id} m={m} />
-              ))}
+              {messages.map((m, i) => {
+                const firstUnread = readAt !== null && m.role === "bot" && isAfter(m.created_at, readAt) &&
+                  !messages.slice(0, i).some((p) => p.role === "bot" && isAfter(p.created_at, readAt));
+                return (
+                  <Fragment key={m.id}>
+                    {firstUnread && (
+                      <div ref={dividerRef} className="flex items-center gap-2 px-2 text-[11px] font-semibold text-forest dark:text-primary">
+                        <span className="h-px flex-1 bg-current opacity-40" /> New messages <span className="h-px flex-1 bg-current opacity-40" />
+                      </div>
+                    )}
+                    <Bubble m={m} />
+                  </Fragment>
+                );
+              })}
               {waiting && (
                 <div className="flex items-center gap-2 px-2 text-sm text-muted">
                   <Loader2 className="size-4 animate-spin" aria-hidden /> Thinking…
@@ -257,8 +298,24 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   );
 }
 
+function isAfter(when: string | null, ref: string) {
+  return !!when && new Date(when).getTime() > new Date(ref).getTime();
+}
+
 function Bubble({ m }: { m: Msg }) {
   const mine = m.role === "user";
+  if (m.kind === "notification") {
+    return (
+      <div className="flex flex-col items-start">
+        <span className="mb-1 inline-flex items-center gap-1 px-2 text-[11px] font-semibold text-muted">
+          <Bell className="size-3" aria-hidden /> Bachat
+        </span>
+        <div className="chat-text max-w-[85%] rounded-3xl rounded-bl-lg border-2 border-primary bg-surface px-4 py-2.5 text-[15px] leading-relaxed text-ink">
+          <RichText text={m.text} />
+        </div>
+      </div>
+    );
+  }
   if (m.role === "system") {
     return (
       <p role="status" className="mx-auto max-w-[90%] rounded-2xl border border-danger/40 bg-danger/10 px-3 py-2 text-center text-xs text-danger">

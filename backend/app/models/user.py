@@ -50,6 +50,8 @@ class UserProfile(Timestamps, Base):
     preferred_places: Mapped[list] = mapped_column(JSONB, default=list)
     notification_prefs: Mapped[dict] = mapped_column(JSONB, default=dict)
     onboarding_state: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # When the person last opened the chat; later bot messages and notifications count as unread.
+    chat_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class UserFact(UUIDPk, UserOwned, Base):

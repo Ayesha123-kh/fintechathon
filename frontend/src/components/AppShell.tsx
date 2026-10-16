@@ -1,9 +1,9 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Fingerprint, FlaskConical, LogOut, Monitor, Moon, Settings2, Shield, Sun, X } from "lucide-react";
+import { Bell, Fingerprint, FlaskConical, LogOut, Monitor, Moon, Shield, Sun, X } from "lucide-react";
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import useSWR from "swr";
 import { api, errorText, fetcher } from "@/lib/api";
 import { passkeySupported, registerPasskey } from "@/lib/passkey";
@@ -23,7 +23,7 @@ type EmailResult = { connected?: boolean; error?: string };
 
 export function AppShell({ children, onChatActivity }: { children: React.ReactNode; onChatActivity?: () => void }) {
   const { status, user } = useSession();
-  const [sheet, setSheet] = useState<"" | "settings" | "notifications">("");
+  const [sheet, setSheet] = useState<"" | "settings">("");
   const [emailResult, setEmailResult] = useState<EmailResult | undefined>();
 
   // The Gmail sign-in returns to /dashboard?settings=email&connected=1 (or &error=...).
@@ -84,13 +84,9 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
                 <span className="hidden lg:inline">Test bank email</span>
               </button>
             )}
-            <button onClick={() => setSheet("notifications")} aria-label="Notifications"
-              className="grid size-10 place-items-center rounded-full hover:bg-hover">
-              <Bell className="size-5" />
-            </button>
-            <button onClick={() => setSheet("settings")} aria-label="Settings"
-              className="grid size-10 place-items-center rounded-full hover:bg-hover">
-              <Settings2 className="size-5" />
+            <button onClick={() => setSheet("settings")} aria-label="Account and settings" title={user.full_name || user.email}
+              className="ml-1 grid size-10 place-items-center rounded-full bg-forest text-sm font-bold tracking-wide text-forest-ink ring-2 ring-primary transition hover:brightness-110">
+              {initials(user.full_name || user.email)}
             </button>
           </div>
         </div>
@@ -112,8 +108,8 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
       )}
 
       {sheet && (
-        <Sheet title={sheet === "settings" ? "Settings" : "Notifications"} onClose={() => setSheet("")}>
-          {sheet === "settings" ? <SettingsPanel emailResult={emailResult} /> : <NotificationsPanel />}
+        <Sheet title="Settings" onClose={() => setSheet("")}>
+          <SettingsPanel emailResult={emailResult} />
         </Sheet>
       )}
     </div>
@@ -229,35 +225,6 @@ function SettingsPanel({ emailResult }: { emailResult?: EmailResult }) {
   );
 }
 
-type Note = { id: string; kind: string; title: string; body: string; url: string; read: boolean; created_at: string };
-
-function NotificationsPanel() {
-  const { data, mutate } = useSWR<Note[]>("/notifications", fetcher);
-  const markRead = useCallback(async () => {
-    await api("/notifications/read", { method: "POST" }).catch(() => {});
-    mutate();
-  }, [mutate]);
-  useEffect(() => {
-    const t = setTimeout(markRead, 1500);
-    return () => clearTimeout(t);
-  }, [markRead]);
-  if (!data) return <Spinner />;
-  if (!data.length) return <p className="py-6 text-center text-sm text-muted">No notifications yet.</p>;
-  return (
-    <ul className="space-y-2">
-      {data.map((n) => (
-        <li key={n.id}>
-          <Link href={n.url} className={clsx("block rounded-2xl p-3.5", n.read ? "bg-surface-2/60" : "bg-primary/25")}>
-            <p className="text-sm font-semibold">{n.title}</p>
-            <p className="mt-0.5 text-sm text-ink-2">{n.body}</p>
-            <p className="mt-1 text-[11px] text-muted">{new Date(n.created_at).toLocaleString()}</p>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function ThemePicker() {
   const [theme, setTheme] = useState<ThemeChoice>("system");
   useEffect(() => setTheme(getTheme()), []);
@@ -281,4 +248,10 @@ function ThemePicker() {
       </div>
     </div>
   );
+}
+
+function initials(name: string): string {
+  const parts = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
+  const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? "?").slice(0, 2);
+  return letters.toUpperCase();
 }

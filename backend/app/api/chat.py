@@ -1,19 +1,19 @@
 import asyncio
 import json
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import chat_channel, presence_key, rate_limit, redis
 from app.core.db import scoped_session
 from app.core.deps import Principal, current_principal, own_db, passive_principal
 from app.core.llm import transcribe
-from app.models import ChatMessage, ChatRoom
+from app.models import ChatMessage, ChatRoom, Notification, UserProfile
 from app.services.omb import GatewayError, ensure_room, send_to_room
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -28,6 +28,26 @@ def message_out(m: ChatMessage) -> dict:
 async def status(p: Principal = Depends(current_principal)) -> dict:
     room = await ensure_room(p.user_id)
     return {"status": room.status, "advisors": [v.get("label", k) for k, v in (room.bots or {}).items()]}
+
+
+@router.get("/unread")
+async def unread(p: Principal = Depends(current_principal), s: AsyncSession = Depends(own_db)) -> dict:
+    """Bot replies and notifications that arrived since the person last opened the chat."""
+    profile = await s.get(UserProfile, p.user_id)
+    read_at = profile.chat_read_at if profile else None
+    stmt = select(func.count()).select_from(ChatMessage).where(ChatMessage.role == "bot", ChatMessage.final.is_(True))
+    if read_at:
+        stmt = stmt.where(ChatMessage.created_at > read_at)
+    return {"count": await s.scalar(stmt), "read_at": read_at.isoformat() if read_at else None}
+
+
+@router.post("/read")
+async def mark_read(p: Principal = Depends(current_principal), s: AsyncSession = Depends(own_db)) -> dict:
+    profile = await s.get(UserProfile, p.user_id)
+    if profile:
+        profile.chat_read_at = datetime.now(UTC)
+    await s.execute(update(Notification).where(Notification.read_at.is_(None)).values(read_at=datetime.now(UTC)))
+    return {"ok": True}
 
 
 @router.get("/messages")
