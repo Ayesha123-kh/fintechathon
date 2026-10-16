@@ -269,8 +269,8 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
           {/* Phones: the chat drops from the chat icon in the top bar, which stays visible above this layer. */}
           <div className={clsx("absolute inset-0 touch-none bg-ink/30 md:hidden", closing && "fade-closing")} onClick={close} />
           <div className={clsx("drop-tr relative flex h-full w-full min-w-0 md:h-auto md:w-auto", closing && "is-closing")}>
-          <span className="drop-tail right-4 bg-forest md:hidden" aria-hidden />
-          <section className="relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border-2 border-primary bg-surface shadow-2xl dark:border-forest md:h-[640px] md:max-h-[calc(100dvh-3rem)] md:w-[400px]">
+          <span className="drop-tail right-[15px] border-primary bg-forest md:hidden dark:border-forest" aria-hidden />
+          <section className="relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] max-md:rounded-tr-xl border-2 border-primary bg-surface shadow-2xl dark:border-forest md:h-[640px] md:max-h-[calc(100dvh-3rem)] md:w-[400px]">
             <header className="flex items-center gap-3 bg-forest px-4 py-3.5 text-forest-ink">
               <div className="grid size-10 place-items-center rounded-full bg-primary text-primary-ink">
                 <MessageCircle className="size-5" aria-hidden />

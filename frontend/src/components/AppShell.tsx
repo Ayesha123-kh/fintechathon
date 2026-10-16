@@ -154,8 +154,8 @@ function Sheet({ title, onClose, onClosing, children }: {
       role="dialog" aria-label={title}>
       <div className={clsx("absolute inset-0 touch-none bg-ink/30", closing && "fade-closing")} onClick={close} />
       <div className={clsx("drop-tl relative w-full md:mt-16 md:mr-4 md:w-96", closing && "is-closing")}>
-        <span className="drop-tail left-4 bg-surface md:hidden" aria-hidden />
-        <div className="max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-[1.75rem] border-2 border-primary bg-surface p-5 dark:border-forest md:max-h-[85dvh]">
+        <span className="drop-tail left-[15px] border-primary bg-surface md:hidden dark:border-forest" aria-hidden />
+        <div className="max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-[1.75rem] max-md:rounded-tl-xl border-2 border-primary bg-surface p-5 dark:border-forest md:max-h-[85dvh]">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold">{title}</h2>
             <button onClick={close} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-hover max-md:hidden">

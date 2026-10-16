@@ -297,13 +297,16 @@ body {
 }
 /* Pointer joining a dropped panel to the icon it came from. */
 .drop-tail {
+  /* Centred on the panel's top border and drawn above it, so the panel border runs into the pointer's edges.
+     The fill (bg-*) must match the panel's top area and the border colour the panel's border (set in markup). */
   position: absolute;
-  top: -7px;
-  width: 16px;
-  height: 16px;
+  z-index: 1;
+  top: -9px;
+  width: 18px;
+  height: 18px;
   transform: rotate(45deg);
-  border-top: 2px solid var(--primary);
-  border-left: 2px solid var(--primary);
+  border-style: solid;
+  border-width: 2px 0 0 2px;
   border-top-left-radius: 4px;
 }
 @media (prefers-reduced-motion: reduce) {
