@@ -73,7 +73,7 @@ def _desk_key(b: teams.BotSpec) -> str:
 
 
 async def apply_user(user_id: str, display_name: str, bulletin: str, investment: bool) -> dict:
-    lock = _user_locks.setdefault(user_id, asyncio.Lock())
+    lock = _user_locks.setdefault(teams.user_short(user_id), asyncio.Lock())
     async with lock:
         doc, roster = teams.user_team_doc(user_id, display_name, bulletin, investment)
         await teams.apply(doc, f"user-{teams.user_short(user_id)}")
@@ -111,6 +111,54 @@ async def sync_users() -> int:
     return updated
 
 
+async def deprovision(short: str) -> dict:
+    """Remove one person's private room, bots and team from OpenMausBot."""
+    removed = {"room": False, "bots": 0, "team": False}
+    lock = _user_locks.setdefault(short, asyncio.Lock())
+    async with lock:
+        snap = await omb.snapshot()
+        for g in snap.get("groups", []):
+            if g.get("name") == f"Bachat · {short}":
+                relay.room_threads.discard(g.get("threadId"))
+                try:  # a room that is mid-turn refuses deletion, so stop it first
+                    await omb.request("POST", f"/api/groups/{g['id']}/interrupt", json={})
+                except OMBError:
+                    pass
+                await omb.request("DELETE", f"/api/groups/{g['id']}")
+                removed["room"] = True
+        for b in snap.get("bots", []):
+            if str(b.get("name", "")).endswith(f" · {short}") and not str(b.get("name")).startswith("Watcher"):
+                try:
+                    await omb.request("POST", f"/api/bots/{b['id']}/interrupt", json={})
+                except OMBError:
+                    pass
+                await omb.request("DELETE", f"/api/bots/{b['id']}")
+                removed["bots"] += 1
+        if f"User {short}" in snap.get("sections", []):
+            await omb.request("DELETE", "/api/sidebar-sections", params={"section": f"User {short}"})
+            removed["team"] = True
+    (settings.gateway_state_dir / "teams" / f"user-{short}.yaml").unlink(missing_ok=True)
+    _user_locks.pop(short, None)
+    log.info("deprovisioned user team %s: %s", short, removed)
+    return removed
+
+
+async def remove_orphans() -> int:
+    """Delete per-user teams whose person no longer exists (deleted by an admin, or directly in SQL)."""
+    known = {teams.user_short(uid) for uid in await backend("GET", "/agents/known-users")}
+    snap = await omb.snapshot()
+    present = {sec.removeprefix("User ") for sec in snap.get("sections", []) if sec.startswith("User ")}
+    present |= {g["name"].removeprefix("Bachat · ") for g in snap.get("groups", [])
+                if str(g.get("name", "")).startswith("Bachat · ")}
+    orphans = present - known
+    for short in orphans:
+        try:
+            await deprovision(short)
+        except OMBError as exc:
+            log.warning("could not remove orphaned team %s: %s", short, exc)
+    return len(orphans)
+
+
 async def startup_sync() -> None:
     for attempt in range(30):
         try:
@@ -118,9 +166,10 @@ async def startup_sync() -> None:
             await omb.ensure_token()
             shared = await sync_shared()
             users = await sync_users()
+            orphans = await remove_orphans()
             status_info.update(last_sync=datetime.now(UTC).isoformat(), last_sync_error=None,
-                               shared=shared, users_updated=users)
-            log.info("startup sync done: %s, %d user teams updated", shared, users)
+                               shared=shared, users_updated=users, orphans_removed=orphans)
+            log.info("startup sync done: %s, %d user teams updated, %d orphans removed", shared, users, orphans)
             return
         except Exception as exc:
             status_info["last_sync_error"] = str(exc)[:500]
@@ -167,8 +216,21 @@ async def usage() -> dict:
 async def force_sync() -> dict:
     shared = await sync_shared(force=True)
     users = await sync_users()
+    orphans = await remove_orphans()
     status_info.update(last_sync=datetime.now(UTC).isoformat(), last_sync_error=None)
-    return {"shared": shared, "users_updated": users}
+    return {"shared": shared, "users_updated": users, "orphans_removed": orphans}
+
+
+class DeprovisionIn(BaseModel):
+    user_id: str
+
+
+@app.post("/users/deprovision", dependencies=[Depends(internal)])
+async def deprovision_user(body: DeprovisionIn) -> dict:
+    try:
+        return await deprovision(teams.user_short(body.user_id))
+    except OMBError as exc:
+        raise HTTPException(502, str(exc)) from exc
 
 
 class ProvisionIn(BaseModel):

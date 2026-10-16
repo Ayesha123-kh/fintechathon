@@ -132,6 +132,11 @@ async def trigger_bot(bot_name: str, text: str) -> dict:
     return await _call("POST", "/bots/trigger", {"bot": bot_name, "text": text})
 
 
+async def deprovision_user(user_id: uuid.UUID) -> dict:
+    """Delete the person's private bots, room and team in OpenMausBot."""
+    return await _call("POST", "/users/deprovision", {"user_id": str(user_id)}, timeout=120)
+
+
 async def gateway_status() -> dict:
     return await _call("GET", "/status", timeout=20)
 

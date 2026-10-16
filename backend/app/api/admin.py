@@ -24,7 +24,7 @@ from app.models import (
     User,
     WatchCluster,
 )
-from app.services.omb import GatewayError, gateway_status, gateway_usage, resync_agents
+from app.services.omb import GatewayError, deprovision_user, gateway_status, gateway_usage, resync_agents
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -92,6 +92,27 @@ async def update_user(user_id: uuid.UUID, body: UserPatch, actor: Principal = De
             await revoke_all_sessions(user.id)
     await audit(s, actor, "user.update", str(user_id), body.model_dump(exclude_none=True))
     return {"ok": True}
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(user_id: uuid.UUID, actor: Principal = Depends(require_admin),
+                      s: AsyncSession = Depends(admin_db)) -> dict:
+    """Permanently delete an account, all its data (cascade) and its OpenMausBot team."""
+    if user_id == actor.user_id:
+        raise HTTPException(400, "cannot_delete_yourself")
+    user = await s.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "not_found")
+    omb_cleanup = "done"
+    try:
+        await deprovision_user(user_id)
+    except GatewayError as exc:
+        # The gateway also removes orphaned teams on every sync, so this is retried automatically.
+        omb_cleanup = f"deferred: {exc}"[:200]
+    await revoke_all_sessions(user_id)
+    await audit(s, actor, "user.delete", str(user_id), {"email": user.email, "omb_cleanup": omb_cleanup})
+    await s.delete(user)
+    return {"ok": True, "omb_cleanup": omb_cleanup}
 
 
 @router.get("/agents")

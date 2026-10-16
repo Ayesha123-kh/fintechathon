@@ -101,6 +101,16 @@ function UsersTab() {
       setError(errorText(e));
     }
   };
+  const remove = async (u: AdminUser) => {
+    if (!window.confirm(`Permanently delete ${u.email}? All their data and their assistant team will be removed. This cannot be undone.`)) return;
+    setError("");
+    try {
+      await api(`/admin/users/${u.id}`, { method: "DELETE" });
+      mutate();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
   return (
     <Card className="space-y-4">
       <div className="relative">
@@ -130,6 +140,10 @@ function UsersTab() {
                     <Button size="sm" variant={u.is_active ? "ghost" : "outline"} onClick={() => patch(u.id, { is_active: !u.is_active })}>
                       {u.is_active ? "Disable" : "Enable"}
                     </Button>
+                    <button aria-label={`Delete ${u.email}`} onClick={() => remove(u)}
+                      className="inline-grid size-9 place-items-center rounded-full align-middle text-danger hover:bg-surface-2">
+                      <Trash2 className="size-4" />
+                    </button>
                   </td>
                 </tr>
               ))}

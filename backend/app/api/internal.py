@@ -90,6 +90,13 @@ async def agent_users() -> list[dict]:
         } for room, user, profile in rows]
 
 
+@router.get("/agents/known-users")
+async def known_users() -> list[str]:
+    """Every existing account id; OMB teams for anyone else are orphans the gateway removes."""
+    async with system_session() as s:
+        return [str(u) for u in (await s.execute(select(User.id))).scalars()]
+
+
 class SoulVersionIn(BaseModel):
     user_id: str
     soul_version: str
