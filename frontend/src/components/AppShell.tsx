@@ -24,6 +24,8 @@ type EmailResult = { connected?: boolean; error?: string };
 export function AppShell({ children, onChatActivity }: { children: React.ReactNode; onChatActivity?: () => void }) {
   const { status, user } = useSession();
   const [sheet, setSheet] = useState<"" | "settings">("");
+  const [settingsClosing, setSettingsClosing] = useState(false);
+  const settingsShown = sheet === "settings" && !settingsClosing;
   const [emailResult, setEmailResult] = useState<EmailResult | undefined>();
 
   // The Gmail sign-in returns to /dashboard?settings=email&connected=1 (or &error=...).
@@ -87,9 +89,18 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
             )}
             <HeaderChatButton />
           </div>
-          <button onClick={() => setSheet("settings")} aria-label="Account and settings" title={user.full_name || user.email}
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-forest text-sm font-bold tracking-wide text-forest-ink ring-2 ring-primary transition hover:brightness-110 max-md:order-first md:-ml-3">
-            {initials(user.full_name || user.email)}
+          {/* Phones: the avatar morphs into a cross while settings is open and closes it on tap. */}
+          <button
+            onClick={() => (settingsShown ? window.dispatchEvent(new Event("bachat:close-sheet")) : setSheet("settings"))}
+            aria-label={settingsShown ? "Close settings" : "Account and settings"} aria-expanded={settingsShown}
+            title={user.full_name || user.email}
+            className="relative grid size-10 shrink-0 place-items-center rounded-full bg-forest text-sm font-bold tracking-wide text-forest-ink ring-2 ring-primary transition hover:brightness-110 max-md:order-first md:-ml-3">
+            <span aria-hidden className={clsx("transition-all duration-300",
+              settingsShown && "max-md:scale-50 max-md:-rotate-90 max-md:opacity-0")}>
+              {initials(user.full_name || user.email)}
+            </span>
+            <X aria-hidden className={clsx("absolute size-5 transition-all duration-300 md:hidden",
+              settingsShown ? "scale-100 rotate-0 opacity-100" : "scale-50 rotate-90 opacity-0")} />
           </button>
         </div>
       </header>
@@ -110,7 +121,8 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
       )}
 
       {sheet && (
-        <Sheet title="Settings" onClose={() => setSheet("")}>
+        <Sheet title="Settings" onClose={() => { setSheet(""); setSettingsClosing(false); }}
+          onClosing={() => setSettingsClosing(true)}>
           <SettingsPanel emailResult={emailResult} />
         </Sheet>
       )}
@@ -118,12 +130,19 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
   );
 }
 
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Sheet({ title, onClose, onClosing, children }: {
+  title: string; onClose: () => void; onClosing?: () => void; children: React.ReactNode;
+}) {
   const [closing, setClosing] = useState(false);
   const close = useCallback(() => {
     setClosing(true);
+    onClosing?.();
     setTimeout(onClose, 170);
-  }, [onClose]);
+  }, [onClose, onClosing]);
+  useEffect(() => {
+    window.addEventListener("bachat:close-sheet", close);
+    return () => window.removeEventListener("bachat:close-sheet", close);
+  }, [close]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
@@ -139,7 +158,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
         <div className="max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-[1.75rem] border-2 border-primary bg-surface p-5 dark:border-forest md:max-h-[85dvh]">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold">{title}</h2>
-            <button onClick={close} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-hover">
+            <button onClick={close} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-hover max-md:hidden">
               <X className="size-5" />
             </button>
           </div>
