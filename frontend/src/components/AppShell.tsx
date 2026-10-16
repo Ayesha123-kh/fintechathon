@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Fingerprint, FlaskConical, Landmark, LayoutDashboard, LogOut, Mail, Settings2, Shield, X } from "lucide-react";
+import { Bell, Fingerprint, FlaskConical, Landmark, LayoutDashboard, LogOut, Mail, Monitor, Moon, Settings2, Shield, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
@@ -10,6 +10,7 @@ import { api, errorText, fetcher } from "@/lib/api";
 import { passkeySupported, registerPasskey } from "@/lib/passkey";
 import { currentSubscription, disablePush, enablePush, pushSupported } from "@/lib/push";
 import { useSession } from "@/lib/session";
+import { applyTheme, getTheme, type ThemeChoice } from "@/lib/theme";
 import { ChatWidget } from "./ChatWidget";
 import { Button, Logo, Spinner } from "./ui";
 
@@ -225,6 +226,7 @@ function SettingsPanel() {
           {pushOn ? "Turn off notifications on this device" : "Turn on notifications"}
         </Button>
       )}
+      <ThemePicker />
       <p className="text-xs text-muted">
         Everything else, like your banks, goals, savings rule, language, sadqah reminders or the investment board,
         is changed by telling your assistant in the chat.
@@ -263,5 +265,30 @@ function NotificationsPanel() {
         </li>
       ))}
     </ul>
+  );
+}
+
+function ThemePicker() {
+  const [theme, setTheme] = useState<ThemeChoice>("system");
+  useEffect(() => setTheme(getTheme()), []);
+  const options: { id: ThemeChoice; label: string; icon: typeof Sun }[] = [
+    { id: "light", label: "Light", icon: Sun },
+    { id: "dark", label: "Dark", icon: Moon },
+    { id: "system", label: "Device", icon: Monitor },
+  ];
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-ink-2">Appearance</p>
+      <div role="radiogroup" aria-label="Appearance" className="grid grid-cols-3 gap-1 rounded-full bg-surface-2 p-1">
+        {options.map(({ id, label, icon: Icon }) => (
+          <button key={id} role="radio" aria-checked={theme === id}
+            onClick={() => { applyTheme(id); setTheme(id); }}
+            className={clsx("inline-flex h-9 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition",
+              theme === id ? "bg-forest text-forest-ink" : "text-ink-2 hover:bg-surface")}>
+            <Icon className="size-4" aria-hidden /> {label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

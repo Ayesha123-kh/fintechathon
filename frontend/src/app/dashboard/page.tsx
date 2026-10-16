@@ -198,6 +198,28 @@ function DashboardView({ d }: { d: Dashboard }) {
               </ul>
             )}
           </Card>
+
+          <Card>
+            <h2 className="mb-3 text-lg font-bold">Recent activity</h2>
+            {d.recent_transactions.length === 0 ? (
+              <p className="py-4 text-sm text-muted">Transactions from your bank emails or chat appear here.</p>
+            ) : (
+              <ul className="-mr-2 max-h-[22rem] divide-y divide-line overflow-y-auto overscroll-contain pr-2">
+                {d.recent_transactions.map((t) => (
+                  <li key={t.id} className="flex items-center gap-3 py-2.5">
+                    <span className="grid size-9 place-items-center rounded-full bg-surface-2">
+                      {t.direction === "credit" ? <ArrowDownLeft className="size-4 text-forest dark:text-primary" aria-label="Money in" /> : <ArrowUpRight className="size-4 text-muted" aria-label="Money out" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{t.merchant || (t.direction === "credit" ? "Money in" : "Payment")}</p>
+                      <p className="text-xs capitalize text-muted">{t.category} · {new Date(t.occurred_at).toLocaleDateString("en-PK", { day: "numeric", month: "short" })}</p>
+                    </div>
+                    <p className="tabular text-sm font-semibold">{t.direction === "credit" ? "+" : "−"}{rs(t.amount)}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </div>
 
         <div className="space-y-5 lg:col-span-2">
@@ -234,28 +256,6 @@ function DashboardView({ d }: { d: Dashboard }) {
                         </p>
                       </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-
-          <Card>
-            <h2 className="mb-3 text-lg font-bold">Recent activity</h2>
-            {d.recent_transactions.length === 0 ? (
-              <p className="py-4 text-sm text-muted">Transactions from your bank emails or chat appear here.</p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {d.recent_transactions.map((t) => (
-                  <li key={t.id} className="flex items-center gap-3 py-2.5">
-                    <span className="grid size-9 place-items-center rounded-full bg-surface-2">
-                      {t.direction === "credit" ? <ArrowDownLeft className="size-4 text-forest dark:text-primary" aria-label="Money in" /> : <ArrowUpRight className="size-4 text-muted" aria-label="Money out" />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{t.merchant || (t.direction === "credit" ? "Money in" : "Payment")}</p>
-                      <p className="text-xs capitalize text-muted">{t.category} · {new Date(t.occurred_at).toLocaleDateString("en-PK", { day: "numeric", month: "short" })}</p>
-                    </div>
-                    <p className="tabular text-sm font-semibold">{t.direction === "credit" ? "+" : "−"}{rs(t.amount)}</p>
                   </li>
                 ))}
               </ul>

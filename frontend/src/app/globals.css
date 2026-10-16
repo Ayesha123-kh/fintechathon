@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* `dark:` follows the in-app choice (data-theme on <html>), else the device setting. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
 /* Brand: #B0E454 lime · #224F10 forest · #EAFFD0 mint · #0D0D0D ink */
 :root {
   --bg: #eaffd0;
@@ -41,6 +53,7 @@
 }
 
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0d0d0d;
   --surface: #161a13;
   --surface-2: #1d2219;
@@ -72,6 +85,10 @@
   --color-chart-track: var(--chart-track);
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --radius-card: 1.5rem;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 html,

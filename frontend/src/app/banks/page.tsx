@@ -69,7 +69,7 @@ export default function BanksPage() {
                 )}
                 <h3 className="mt-5 mb-1 text-sm font-semibold text-ink-2">Recent transactions</h3>
                 {a.transactions.length === 0 ? <p className="py-2 text-sm text-muted">None yet.</p> : (
-                  <ul className="divide-y divide-line">
+                  <ul className="-mr-2 max-h-72 divide-y divide-line overflow-y-auto overscroll-contain pr-2">
                     {a.transactions.map((t) => (
                       <li key={t.id} className="flex items-center gap-3 py-2">
                         {t.direction === "credit" ? <ArrowDownLeft className="size-4 text-forest dark:text-primary" aria-label="Money in" /> : <ArrowUpRight className="size-4 text-muted" aria-label="Money out" />}

@@ -351,7 +351,7 @@ async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
         select(func.coalesce(func.sum(SavingsEntry.amount), 0))
         .where(SavingsEntry.created_at >= week_ago, SavingsEntry.amount > 0)))
     deal_savings = money(await s.scalar(select(func.coalesce(func.sum(DealRedemption.amount_saved), 0))))
-    recent = (await s.execute(select(Transaction).order_by(Transaction.occurred_at.desc()).limit(8))).scalars().all()
+    recent = (await s.execute(select(Transaction).order_by(Transaction.occurred_at.desc()).limit(25))).scalars().all()
 
     return {
         "currency": "PKR",
