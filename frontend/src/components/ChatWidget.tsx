@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { Bell, Loader2, MessageCircle, Mic, Send, Square, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { DropTail } from "./DropTail";
 import { api, errorText } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -33,6 +34,15 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     const toggle = () => (openRef.current ? closeRef.current() : setOpen(true));
     window.addEventListener("bachat:toggle-chat", toggle);
     return () => window.removeEventListener("bachat:toggle-chat", toggle);
+  }, []);
+  // Only one drop-down at a time: opening the chat closes settings, and settings opening closes the chat.
+  useEffect(() => {
+    if (open) window.dispatchEvent(new Event("bachat:close-sheet"));
+  }, [open]);
+  useEffect(() => {
+    const onClose = () => openRef.current && closeRef.current();
+    window.addEventListener("bachat:close-chat", onClose);
+    return () => window.removeEventListener("bachat:close-chat", onClose);
   }, []);
   // The top-bar chat icon morphs into a cross while the chat is open.
   useEffect(() => {
@@ -269,7 +279,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
           {/* Phones: the chat drops from the chat icon in the top bar, which stays visible above this layer. */}
           <div className={clsx("absolute inset-0 touch-none bg-ink/30 md:hidden", closing && "fade-closing")} onClick={close} />
           <div className={clsx("drop-tr relative flex h-full w-full min-w-0 md:h-auto md:w-auto", closing && "is-closing")}>
-          <span className="drop-tail right-[15px] border-primary bg-forest md:hidden dark:border-forest" aria-hidden />
+          <DropTail className="right-[10px]" fill="fill-forest" stroke="stroke-primary dark:stroke-forest" />
           <section className="relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] max-md:rounded-tr-xl border-2 border-primary bg-surface shadow-2xl dark:border-forest md:h-[640px] md:max-h-[calc(100dvh-3rem)] md:w-[400px]">
             <header className="flex items-center gap-3 bg-forest px-4 py-3.5 text-forest-ink">
               <div className="grid size-10 place-items-center rounded-full bg-primary text-primary-ink">

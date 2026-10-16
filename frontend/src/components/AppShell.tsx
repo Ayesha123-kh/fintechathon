@@ -10,6 +10,7 @@ import { passkeySupported, registerPasskey } from "@/lib/passkey";
 import { currentSubscription, disablePush, enablePush, pushSupported } from "@/lib/push";
 import { useSession } from "@/lib/session";
 import { applyTheme, getTheme, type ThemeChoice } from "@/lib/theme";
+import { DropTail } from "./DropTail";
 import { ChatWidget } from "./ChatWidget";
 import { EmailSettings } from "./EmailSettings";
 import { Button, Logo, Spinner } from "./ui";
@@ -36,7 +37,10 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
       setSheet("settings");
       window.history.replaceState(null, "", window.location.pathname);
     }
-    const open = () => setSheet("settings");
+    const open = () => {
+      window.dispatchEvent(new Event("bachat:close-chat"));
+      setSheet("settings");
+    };
     window.addEventListener("bachat:open-settings", open);
     return () => window.removeEventListener("bachat:open-settings", open);
   }, []);
@@ -91,7 +95,11 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
           </div>
           {/* Phones: the avatar morphs into a cross while settings is open and closes it on tap. */}
           <button
-            onClick={() => (settingsShown ? window.dispatchEvent(new Event("bachat:close-sheet")) : setSheet("settings"))}
+            onClick={() => {
+              if (settingsShown) return window.dispatchEvent(new Event("bachat:close-sheet"));
+              window.dispatchEvent(new Event("bachat:close-chat")); // only one drop-down open at a time
+              setSheet("settings");
+            }}
             aria-label={settingsShown ? "Close settings" : "Account and settings"} aria-expanded={settingsShown}
             title={user.full_name || user.email}
             className="relative grid size-10 shrink-0 place-items-center rounded-full bg-forest text-sm font-bold tracking-wide text-forest-ink ring-2 ring-primary transition hover:brightness-110 max-md:order-first md:-ml-3">
@@ -154,7 +162,7 @@ function Sheet({ title, onClose, onClosing, children }: {
       role="dialog" aria-label={title}>
       <div className={clsx("absolute inset-0 touch-none bg-ink/30", closing && "fade-closing")} onClick={close} />
       <div className={clsx("drop-tl relative w-full md:mt-16 md:mr-4 md:w-96", closing && "is-closing")}>
-        <span className="drop-tail left-[15px] border-primary bg-surface md:hidden dark:border-forest" aria-hidden />
+        <DropTail className="left-[10px]" fill="fill-surface" stroke="stroke-primary dark:stroke-forest" />
         <div className="max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-[1.75rem] max-md:rounded-tl-xl border-2 border-primary bg-surface p-5 dark:border-forest md:max-h-[85dvh]">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold">{title}</h2>
