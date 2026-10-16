@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Fingerprint, FlaskConical, LogOut, Monitor, Moon, Shield, Sun, X } from "lucide-react";
+import { Bell, Fingerprint, FlaskConical, MessageCircle, LogOut, Monitor, Moon, Shield, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import useSWR from "swr";
@@ -72,8 +72,9 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
   return (
     <div className="min-h-dvh pb-10">
       <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/85 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
-          <Link href="/dashboard" aria-label="Home">
+        {/* Phones: avatar left, logo centred, chat on the right. Laptops: logo left, actions and avatar right. */}
+        <div className="relative mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
+          <Link href="/dashboard" aria-label="Home" className="max-md:absolute max-md:left-1/2 max-md:-translate-x-1/2">
             <Logo size={34} />
           </Link>
           <div className="ml-auto flex items-center gap-1">
@@ -84,11 +85,12 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
                 <span className="hidden lg:inline">Test bank email</span>
               </button>
             )}
-            <button onClick={() => setSheet("settings")} aria-label="Account and settings" title={user.full_name || user.email}
-              className="ml-1 grid size-10 place-items-center rounded-full bg-forest text-sm font-bold tracking-wide text-forest-ink ring-2 ring-primary transition hover:brightness-110">
-              {initials(user.full_name || user.email)}
-            </button>
+            <HeaderChatButton />
           </div>
+          <button onClick={() => setSheet("settings")} aria-label="Account and settings" title={user.full_name || user.email}
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-forest text-sm font-bold tracking-wide text-forest-ink ring-2 ring-primary transition hover:brightness-110 max-md:order-first md:-ml-3">
+            {initials(user.full_name || user.email)}
+          </button>
         </div>
       </header>
 
@@ -254,4 +256,26 @@ function initials(name: string): string {
   const parts = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
   const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? "?").slice(0, 2);
   return letters.toUpperCase();
+}
+
+/** Phones only: opens the chat (ChatWidget) and shows its unread count. */
+function HeaderChatButton() {
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    const on = (e: Event) => setUnread(Number((e as CustomEvent).detail) || 0);
+    window.addEventListener("bachat:chat-unread", on);
+    return () => window.removeEventListener("bachat:chat-unread", on);
+  }, []);
+  return (
+    <button onClick={() => window.dispatchEvent(new Event("bachat:open-chat"))}
+      aria-label={unread ? `Open chat, ${unread} unread` : "Open chat with your assistant"}
+      className="relative grid size-10 place-items-center rounded-full bg-forest text-forest-ink transition hover:brightness-110 md:hidden">
+      <MessageCircle className="size-5" aria-hidden />
+      {unread > 0 && (
+        <span className="absolute -top-1 -right-1 grid min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-ink ring-2 ring-bg">
+          {unread}
+        </span>
+      )}
+    </button>
+  );
 }

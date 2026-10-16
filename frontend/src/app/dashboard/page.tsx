@@ -68,7 +68,8 @@ function DashboardView({ d }: { d: Dashboard }) {
         </Link>
       )}
 
-      <Card className={`flex items-center justify-between gap-4 md:p-7 ${on("home")}`}>
+      {/* Phones: amounts | circle on top, pills full width below. sm+: pills under the amounts, circle spans both. */}
+      <Card className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-4 md:p-7 ${on("home")}`}>
         <div className="min-w-0 space-y-4">
           <div>
             <p className="text-sm text-muted">Total balance</p>
@@ -86,16 +87,6 @@ function DashboardView({ d }: { d: Dashboard }) {
               <dd className="text-xs text-muted">Spent {rs(d.spent_this_month, { compact: true })} this month</dd>
             </div>
           </dl>
-          <div className="flex flex-wrap gap-2 text-sm">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 font-semibold text-primary-ink">
-              <Sparkles className="size-3.5" aria-hidden /> {rs(d.saved_this_week)} saved this week
-            </span>
-            {Number(d.deal_savings_total) > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1">
-                <Tag className="size-3.5" aria-hidden /> {rs(d.deal_savings_total)} saved with deals
-              </span>
-            )}
-          </div>
         </div>
         <div className="sm:hidden"><Donut
           size={136}
@@ -115,7 +106,7 @@ function DashboardView({ d }: { d: Dashboard }) {
             </div>
           }
         /></div>
-        <div className="hidden sm:block"><Donut
+        <div className="hidden sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:block"><Donut
           size={200}
           thickness={22}
           label={`Total ${rs(d.total_balance)}: savings ${rs(d.total_savings)}, spendable ${rs(d.expendable)}`}
@@ -133,6 +124,16 @@ function DashboardView({ d }: { d: Dashboard }) {
             </div>
           }
         /></div>
+        <div className="col-span-2 flex flex-wrap gap-2 text-sm sm:col-span-1 sm:col-start-1">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 font-semibold whitespace-nowrap text-primary-ink">
+            <Sparkles className="size-3.5" aria-hidden /> {rs(d.saved_this_week)} saved this week
+          </span>
+          {Number(d.deal_savings_total) > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-forest/30 bg-surface-2 px-3 py-1 whitespace-nowrap">
+              <Tag className="size-3.5" aria-hidden /> {rs(d.deal_savings_total)} saved with deals
+            </span>
+          )}
+        </div>
       </Card>
 
       {!d.email_connected && hasData && (

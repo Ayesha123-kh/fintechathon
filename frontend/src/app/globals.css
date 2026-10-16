@@ -149,6 +149,23 @@ body {
   transform-origin: bottom right;
   animation: bubble-pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
+@media (max-width: 767px) {
+  /* On phones it drops down from the chat icon in the top bar. */
+  .bubble-pop {
+    transform-origin: top right;
+    animation-name: bubble-drop;
+  }
+}
+@keyframes bubble-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .bubble-pop {
     animation: none;
