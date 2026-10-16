@@ -37,44 +37,47 @@ export function useMobileTab(): [Tab, (t: Tab) => void] {
   return [tab, setTab];
 }
 
-/** Bottom navigation for phones (hidden from md up, where the whole dashboard fits on one screen). */
+/**
+ * Bottom navigation for phones (hidden from md up). The active tab sits in a lime circle that floats in a
+ * curved notch cut into the bar; switching tabs slides the notch over while the circle dips and pops back up.
+ */
 export function MobileTabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   // Lifts the chat button above this bar while it is on screen.
   useEffect(() => {
     document.documentElement.classList.add("has-bottom-nav");
     return () => document.documentElement.classList.remove("has-bottom-nav");
   }, []);
+  const index = TABS.findIndex((t) => t.id === tab);
+  const ActiveIcon = TABS[index].icon;
   return (
-    <nav aria-label="Dashboard sections"
-      className="fixed inset-x-0 bottom-0 z-30 border-t-2 border-primary bg-surface/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-forest">
-      <ul className="mx-auto flex max-w-md items-end justify-between">
-        {TABS.map(({ id, label, icon: Icon }) => {
-          const active = tab === id;
-          if (id === "home") {
+    <nav aria-label="Dashboard sections" style={{ "--i": index } as React.CSSProperties}
+      className="tabbar fixed inset-x-0 bottom-0 z-30 md:hidden">
+      <div className="relative h-16">
+        {/* The bar is three pieces so the notch is a real hole that slides: left fill, notch, right fill. */}
+        <div className="tabbar-fill-left" aria-hidden />
+        <svg className="tabbar-notch-shape" viewBox="0 0 120 64" preserveAspectRatio="none" aria-hidden>
+          <path d="M0 0H14C22 0 25 3 28 8A32 32 0 0 0 92 8C95 3 98 0 106 0H120V64H0Z" />
+        </svg>
+        <div className="tabbar-fill-right" aria-hidden />
+        <span key={tab} className="tabbar-bubble" aria-hidden>
+          <ActiveIcon className="size-6" />
+        </span>
+        <ul className="relative mx-auto grid h-full grid-cols-5">
+          {TABS.map(({ id, label, icon: Icon }) => {
+            const active = tab === id;
             return (
-              <li key={id} className="-mt-5 flex flex-1 justify-center">
-                <button onClick={() => onChange(id)} aria-current={active ? "page" : undefined} aria-label={label}
-                  className={clsx("grid size-14 place-items-center rounded-full border-4 border-bg shadow-lg transition",
-                    active ? "bg-forest text-forest-ink" : "bg-primary text-primary-ink")}>
-                  <Icon className="size-6" aria-hidden />
+              <li key={id} className="flex">
+                <button onClick={() => onChange(id)} aria-label={label} aria-current={active ? "page" : undefined}
+                  className="group flex flex-1 items-center justify-center">
+                  <Icon aria-hidden className={clsx("size-6 transition-all duration-300",
+                    active ? "-translate-y-6 scale-75 opacity-0" : "text-forest-ink/75 group-active:scale-90")} />
                 </button>
               </li>
             );
-          }
-          return (
-            <li key={id} className="flex-1">
-              <button onClick={() => onChange(id)} aria-current={active ? "page" : undefined}
-                className={clsx("flex w-full flex-col items-center gap-0.5 py-2 text-[11px] font-semibold",
-                  active ? "text-forest dark:text-primary" : "text-muted")}>
-                <span className={clsx("grid h-7 w-11 place-items-center rounded-full", active && "bg-primary/50 dark:bg-forest")}>
-                  <Icon className="size-5" aria-hidden />
-                </span>
-                {label}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+          })}
+        </ul>
+      </div>
+      <div className="h-[env(safe-area-inset-bottom)] bg-forest" />
     </nav>
   );
 }

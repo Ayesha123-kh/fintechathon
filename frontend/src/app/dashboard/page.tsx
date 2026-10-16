@@ -45,9 +45,11 @@ function DashboardView({ d }: { d: Dashboard }) {
   const hasData = d.banks.length > 0 || d.goals.length > 0;
 
   return (
+    <>
+    {/* Outside the spaced container: a fixed bar must not pick up its children's margins. */}
+    <MobileTabBar tab={tab} onChange={setTab} />
     <div className="space-y-5 max-md:pb-24">
       {bank && <BankModal accountId={bank} onClose={() => setBank(null)} />}
-      <MobileTabBar tab={tab} onChange={setTab} />
       <div className={on("home")}>
         <p className="text-sm text-muted">Assalam o Alaikum{first ? `, ${first}` : ""}</p>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Your money at a glance</h1>
@@ -272,5 +274,6 @@ function DashboardView({ d }: { d: Dashboard }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

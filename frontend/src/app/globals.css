@@ -161,6 +161,78 @@ body {
 }
 @media (max-width: 767px) {
   :root.has-bottom-nav {
-    --bottom-nav: 4.5rem;
+    --bottom-nav: 5.5rem;
+  }
+}
+
+/* ---------- Phone tab bar: a curved notch cut into the bar follows the active tab ---------- */
+.tabbar {
+  --x: calc((var(--i) + 0.5) * 20%); /* centre of the active tab */
+  --ease: cubic-bezier(0.65, 0, 0.35, 1);
+}
+.tabbar-fill-left,
+.tabbar-fill-right,
+.tabbar-notch-shape {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  fill: var(--forest);
+  background: var(--forest);
+}
+.tabbar-fill-left {
+  left: 0;
+  width: max(0px, calc(var(--x) - 59px));
+  transition: width 0.5s var(--ease);
+}
+.tabbar-notch-shape {
+  left: calc(var(--x) - 60px);
+  width: 120px;
+  height: 100%;
+  background: transparent;
+  transition: left 0.5s var(--ease);
+}
+.tabbar-fill-right {
+  left: calc(var(--x) + 59px);
+  right: 0;
+  transition: left 0.5s var(--ease);
+}
+.tabbar-bubble {
+  position: absolute;
+  top: -1.0625rem;
+  left: calc(var(--x) - 1.5625rem);
+  z-index: 1;
+  display: grid;
+  width: 3.125rem;
+  height: 3.125rem;
+  place-items: center;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-ink);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.2);
+  transition: left 0.5s var(--ease);
+  animation: tabbar-dip 0.55s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+/* Re-mounted on every tab change: sink into the bar while travelling, then pop up with the new icon. */
+@keyframes tabbar-dip {
+  0% {
+    transform: translateY(1.75rem) scale(0.35);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(1.25rem) scale(0.5);
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabbar-fill-left,
+  .tabbar-fill-right,
+  .tabbar-notch-shape,
+  .tabbar-bubble {
+    transition: none;
+    animation: none;
   }
 }
