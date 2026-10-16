@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import admin, auth, chat, email, finance, internal, push
+from app.api import admin, auth, chat, dev, email, finance, internal, push
 from app.core.config import settings
 from app.mcp import market_server, user_server
 from app.mcp.common import BearerGuard
@@ -46,7 +46,7 @@ async def csrf_guard(request: Request, call_next):
     return await call_next(request)
 
 
-for r in (auth.router, finance.router, chat.router, email.router, push.router, admin.router, internal.router):
+for r in (auth.router, finance.router, chat.router, email.router, push.router, admin.router, internal.router, dev.router):
     app.include_router(r, prefix="/api")
 
 # MCP servers for OpenMausBot (not exposed through the web proxy).

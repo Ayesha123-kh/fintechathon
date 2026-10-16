@@ -73,6 +73,13 @@ class Settings(BaseSettings):
     # Bootstrap admin (created on startup if missing)
     admin_email: str = ""
     admin_password: str = ""
+    # Login email of the demo user created by the temporary demo-data migration.
+    demo_user_email: str = "demo@bachat.pk"
+
+    @property
+    def test_tools_enabled(self) -> bool:
+        """Simulated bank alert emails and similar helpers; never in production."""
+        return self.environment.lower() != "production"
 
     run_scheduler: bool = False
 

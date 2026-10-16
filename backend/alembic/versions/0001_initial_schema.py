@@ -7,9 +7,9 @@ Create Date: 2026-10-15 15:59:57.580840
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 from app.core.config import settings
 from app.models import GLOBAL_TABLES, PRIVATE_TABLES, USER_OWNED_TABLES
 

@@ -63,3 +63,20 @@ def test_regex_parse_credit_alert():
 def test_normalize_merchant():
     assert normalize_name("KFC PAKISTAN (PVT) LTD - DHA") == "kfc"
     assert normalize_name("Imtiaz Super Market") == "imtiaz super market"
+
+
+def test_simulated_alerts_parse_like_real_ones():
+    from app.models import Bank, BankAccount, Card
+    from app.services.test_alerts import build_alert
+
+    bank = Bank(name="Meezan Bank", short_name="Meezan", email_domains=["meezanbank.com"])
+    account = BankAccount(balance=Decimal("50000"), last4="4821")
+    card = Card(network="visa", last4="4821")
+    for direction in ("debit", "credit"):
+        subject, text, _html, info = build_alert(bank, account, card, direction)
+        parsed = regex_parse(f"{subject}. {text}")
+        assert parsed["direction"] == direction
+        assert parsed["amount"] == info["amount"]
+        assert parsed["last4"] == "4821"
+        expected = 50000 - info["amount"] if direction == "debit" else 50000 + info["amount"]
+        assert parsed["balance_after"] == expected

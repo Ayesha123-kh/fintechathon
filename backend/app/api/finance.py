@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.deps import Principal, current_principal, own_db
 from app.models import (
     Bank,
@@ -43,6 +44,7 @@ async def me(p: Principal = Depends(current_principal), s: AsyncSession = Depend
         "language": profile.language if profile else "en",
         "investment_opt_in": bool(profile and profile.investment_opt_in),
         "assistant_status": room.status if room else "pending",
+        "test_tools": settings.test_tools_enabled,
     }
 
 

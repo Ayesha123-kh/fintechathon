@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Fingerprint, Landmark, LayoutDashboard, LogOut, Mail, Settings2, Shield, X } from "lucide-react";
+import { Bell, Fingerprint, FlaskConical, Landmark, LayoutDashboard, LogOut, Mail, Settings2, Shield, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
@@ -23,6 +23,29 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
   const { status, user } = useSession();
   const pathname = usePathname();
   const [sheet, setSheet] = useState<"" | "settings" | "notifications">("");
+  const { data: me } = useSWR<{ test_tools?: boolean }>(status === "active" ? "/me" : null, fetcher);
+  const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
+  const [sending, setSending] = useState(false);
+
+  const sendTestAlert = async () => {
+    setSending(true);
+    try {
+      const r = await api<{ bank: string; direction: string; amount: number; merchant: string; sent_to: string[] }>(
+        "/dev/test-alert", { method: "POST" });
+      setToast({ text: `Sent a ${r.bank} ${r.direction} alert of Rs. ${r.amount.toLocaleString("en-PK")} to ${r.sent_to.join(", ")}. It will appear here within a minute.` });
+    } catch (e) {
+      const msg = errorText(e);
+      setToast({
+        error: true,
+        text: msg.startsWith("connect_gmail_first") ? "Connect a Gmail inbox on the Email screen first."
+          : msg.startsWith("smtp_not_configured") ? "Add SMTP_USERNAME and SMTP_PASSWORD to backend/.env to send test emails."
+            : msg.startsWith("add_a_bank_first") ? "Add a bank account in chat first." : msg,
+      });
+    } finally {
+      setSending(false);
+      setTimeout(() => setToast(null), 7000);
+    }
+  };
 
   if (status !== "active" || !user) {
     return (
@@ -55,6 +78,13 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-1">
+            {me?.test_tools && (
+              <button onClick={sendTestAlert} disabled={sending} aria-label="Send a test bank email" title="Send a test bank email"
+                className="inline-flex h-10 items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink-2 hover:bg-surface disabled:opacity-50">
+                <FlaskConical className={clsx("size-5", sending && "animate-pulse")} aria-hidden />
+                <span className="hidden lg:inline">Test bank email</span>
+              </button>
+            )}
             <button onClick={() => setSheet("notifications")} aria-label="Notifications"
               className="grid size-10 place-items-center rounded-full hover:bg-surface">
               <Bell className="size-5" />
@@ -87,6 +117,14 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
       <Suspense>
         <ChatWidget onActivity={onChatActivity} />
       </Suspense>
+
+      {toast && (
+        <div role="status" className={clsx(
+          "fixed inset-x-4 top-20 z-50 mx-auto max-w-md rounded-2xl px-4 py-3 text-sm shadow-lg",
+          toast.error ? "bg-danger text-white" : "bg-forest text-forest-ink")}>
+          {toast.text}
+        </div>
+      )}
 
       {sheet && (
         <Sheet title={sheet === "settings" ? "Settings" : "Notifications"} onClose={() => setSheet("")}>

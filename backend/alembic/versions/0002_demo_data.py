@@ -1,7 +1,8 @@
 """TEMPORARY demo data: a long-time user with ~4 months of history, plus a demo admin.
 
 Accounts created:
-  demo@bachat.pk   / demo12345   (user, onboarded, opted in to investments)
+  $DEMO_USER_EMAIL / demo12345   (user "Osama", onboarded, opted in to investments;
+                                  defaults to demo@bachat.pk; use a Gmail you own to connect its inbox)
   admin@bachat.pk  / admin12345  (admin)
 
 Remove it with:  alembic downgrade 0001
@@ -52,7 +53,8 @@ down_revision: str | None = "0001"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-DEMO_USER = "demo@bachat.pk"
+DEMO_USER = settings.demo_user_email.lower()
+LEGACY_DEMO_USER = "demo@bachat.pk"
 DEMO_ADMIN = "admin@bachat.pk"
 DEMO_TAG = "[demo]"
 DEMO_BOT = "demo-seed"
@@ -352,7 +354,8 @@ def downgrade() -> None:
     conn = op.get_bind()
     _system(conn)
     # Everything owned by the demo users goes with them (ON DELETE CASCADE).
-    conn.execute(sa.text("DELETE FROM users WHERE email IN (:u, :a)"), {"u": DEMO_USER, "a": DEMO_ADMIN})
+    conn.execute(sa.text("DELETE FROM users WHERE email IN (:u, :l, :a)"),
+                 {"u": DEMO_USER, "l": LEGACY_DEMO_USER, "a": DEMO_ADMIN})
     conn.execute(sa.text("DELETE FROM deals WHERE description LIKE :t"), {"t": f"{DEMO_TAG}%"})
     conn.execute(sa.text("DELETE FROM market_signals WHERE created_by = :b"), {"b": DEMO_BOT})
     conn.execute(sa.text("DELETE FROM research_notes WHERE created_by = :b"), {"b": DEMO_BOT})

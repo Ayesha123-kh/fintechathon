@@ -32,6 +32,7 @@ AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me"
 SCOPES = "https://www.googleapis.com/auth/gmail.readonly openid email"
+TEST_ALERT_SUBJECT = "Bachat test alert"
 
 
 def redirect_uri() -> str:
@@ -209,7 +210,11 @@ async def sync_connection(conn_id: uuid.UUID, user_id: uuid.UUID) -> int:
             return 0
         since = conn.last_synced_at - timedelta(hours=2) if conn.last_synced_at else datetime.combine(
             conn.sync_from or datetime.now(UTC).date(), datetime.min.time(), UTC)
-        query = f"from:({' OR '.join(domains)}) after:{int(since.timestamp())}"
+        sources = f"from:({' OR '.join(domains)})"
+        if settings.test_tools_enabled:
+            # Simulated alerts come from our SMTP account, not the bank's domain.
+            sources = f'({sources} OR subject:"{TEST_ALERT_SUBJECT}")'
+        query = f"{sources} after:{int(since.timestamp())}"
         seen = set((await s.execute(select(IngestedEmail.external_id).where(
             IngestedEmail.connection_id == conn.id))).scalars())
         headers = {"Authorization": f"Bearer {token}"}
@@ -244,7 +249,8 @@ async def sync_connection(conn_id: uuid.UUID, user_id: uuid.UUID) -> int:
                 parsed = await parse_email(subject, text)
                 status = "ignored"
                 if parsed and parsed.get("amount"):
-                    bank = next((b for b in banks if any(d in sender for d in b.email_domains)), None)
+                    bank = next((b for b in banks if any(d in sender for d in b.email_domains)), None) or next(
+                        (b for b in banks if b.name.lower() in f"{sender} {subject}".lower()), None)
                     account = _match_account(accounts, bank, parsed.get("last4"))
                     tx = await finance.record_transaction(
                         s, user_id, amount=parsed["amount"], direction=parsed.get("direction", "debit"),
