@@ -4,30 +4,123 @@ import clsx from "clsx";
 import { useState } from "react";
 import { rs } from "@/lib/api";
 
-/** Two-part bar: savings (green) vs. spendable (violet). Validated pair; 2px surface gap between fills. */
-export function SplitBar({ savings, expendable, label }: { savings: number; expendable: number; label: string }) {
-  const total = Math.max(savings + expendable, 0);
-  const s = total ? (savings / total) * 100 : 0;
-  const [hover, setHover] = useState<"" | "s" | "e">("");
+type Segment = { key: string; label: string; value: number; className: string };
+
+/** SVG donut. Segments are separated by a small surface gap; hovering one shows its value in the centre. */
+export function Donut({
+  segments,
+  size = 160,
+  thickness = 16,
+  center,
+  label,
+}: {
+  segments: Segment[];
+  size?: number;
+  thickness?: number;
+  center?: React.ReactNode;
+  label: string;
+}) {
+  const [hover, setHover] = useState<string>("");
+  const r = (size - thickness) / 2;
+  const c = 2 * Math.PI * r;
+  const total = segments.reduce((a, s) => a + Math.max(s.value, 0), 0);
+  const visible = segments.filter((s) => s.value > 0);
+  const gap = visible.length > 1 ? Math.min(4, c * 0.01) : 0;
+  let offset = 0;
+  const active = segments.find((s) => s.key === hover);
   return (
-    <div className="relative">
-      <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full bg-chart-track" role="img"
-        aria-label={`${label}: savings ${rs(savings)}, spendable ${rs(expendable)}`}>
-        {savings > 0 && (
-          <div className="h-full rounded-full bg-chart-save" style={{ width: `${s}%` }}
-            onPointerEnter={() => setHover("s")} onPointerLeave={() => setHover("")} />
-        )}
-        {expendable > 0 && (
-          <div className="h-full flex-1 rounded-full bg-chart-spend"
-            onPointerEnter={() => setHover("e")} onPointerLeave={() => setHover("")} />
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label={label} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={thickness} className="stroke-chart-track" />
+        {total > 0 &&
+          visible.map((s) => {
+            const len = Math.max((s.value / total) * c - gap, 0.001);
+            const el = (
+              <circle
+                key={s.key}
+                cx={size / 2}
+                cy={size / 2}
+                r={r}
+                fill="none"
+                strokeWidth={hover === s.key ? thickness + 3 : thickness}
+                strokeLinecap="butt"
+                strokeDasharray={`${len} ${c - len}`}
+                strokeDashoffset={-offset}
+                className={clsx(s.className, "transition-[stroke-width] duration-150")}
+                onPointerEnter={() => setHover(s.key)}
+                onPointerLeave={() => setHover("")}
+              >
+                <title>{`${s.label}: ${rs(s.value)}`}</title>
+              </circle>
+            );
+            offset += len + gap;
+            return el;
+          })}
+      </svg>
+      <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
+        {active ? (
+          <div>
+            <p className="text-[11px] text-muted">{active.label}</p>
+            <p className="tabular text-sm font-bold">{rs(active.value, { compact: true })}</p>
+            <p className="text-[11px] text-muted">{total ? Math.round((active.value / total) * 100) : 0}%</p>
+          </div>
+        ) : (
+          center
         )}
       </div>
-      {hover && (
-        <div className="pointer-events-none absolute -top-9 left-1/2 z-10 -translate-x-1/2 rounded-xl bg-ink px-3 py-1.5 text-xs whitespace-nowrap text-surface">
-          {hover === "s" ? `Savings ${rs(savings)}` : `Spendable ${rs(expendable)}`}
-        </div>
-      )}
     </div>
+  );
+}
+
+/** Single-value progress ring (goals). */
+export function ProgressRing({
+  value,
+  size = 72,
+  thickness = 8,
+  label,
+  children,
+}: {
+  value: number;
+  size?: number;
+  thickness?: number;
+  label: string;
+  children?: React.ReactNode;
+}) {
+  const pct = Math.max(0, Math.min(1, value));
+  const r = (size - thickness) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }} role="progressbar"
+      aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct * 100)}>
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={thickness} className="stroke-chart-track" />
+        {pct > 0 && (
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={thickness} strokeLinecap="round"
+            strokeDasharray={`${pct * c} ${c}`} className="stroke-chart-save transition-[stroke-dasharray] duration-700" />
+        )}
+      </svg>
+      <div className="absolute inset-0 grid place-items-center">
+        {children ?? <span className="tabular text-sm font-bold">{Math.round(pct * 100)}%</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Savings vs. spendable as one donut; total in the middle. */
+export function SplitDonut({ savings, expendable, size = 120, thickness = 14, label }: {
+  savings: number; expendable: number; size?: number; thickness?: number; label: string;
+}) {
+  return (
+    <Donut
+      size={size}
+      thickness={thickness}
+      label={`${label}: savings ${rs(savings)}, spendable ${rs(expendable)}`}
+      segments={[
+        { key: "s", label: "Savings", value: savings, className: "stroke-chart-save" },
+        { key: "e", label: "Spendable", value: expendable, className: "stroke-chart-spend" },
+      ]}
+      center={<p className="tabular text-xs font-bold">{rs(savings + expendable, { compact: true })}</p>}
+    />
   );
 }
 
@@ -35,7 +128,7 @@ export function SplitLegend() {
   return (
     <div className="flex gap-4 text-xs text-ink-2">
       <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-save" />Savings</span>
-      <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-spend" />Spendable</span>
+      <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-spend ring-1 ring-forest/30" />Spendable</span>
     </div>
   );
 }

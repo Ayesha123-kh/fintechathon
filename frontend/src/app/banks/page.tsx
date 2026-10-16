@@ -4,7 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, CreditCard, Landmark } from "lucide-react"
 import Link from "next/link";
 import useSWR from "swr";
 import { AppShell } from "@/components/AppShell";
-import { SplitBar, SplitLegend } from "@/components/charts";
+import { SplitDonut, SplitLegend } from "@/components/charts";
 import { Card, Empty, Spinner } from "@/components/ui";
 import { fetcher, rs } from "@/lib/api";
 
@@ -49,9 +49,18 @@ export default function BanksPage() {
                   </div>
                   <p className="tabular text-lg font-bold">{rs(a.balance)}</p>
                 </div>
-                <div className="mt-4"><SplitBar savings={Number(a.savings)} expendable={Number(a.expendable)} label={a.bank} /></div>
-                <div className="tabular mt-1.5 flex justify-between text-xs text-muted">
-                  <span>{rs(a.savings)} savings</span><span>{rs(a.expendable)} spendable</span>
+                <div className="mt-4 flex items-center justify-between gap-4">
+                  <dl className="tabular space-y-2 text-sm">
+                    <div>
+                      <dt className="flex items-center gap-1.5 text-xs text-muted"><span className="size-2.5 rounded-full bg-chart-save" />Savings</dt>
+                      <dd className="font-semibold">{rs(a.savings)}</dd>
+                    </div>
+                    <div>
+                      <dt className="flex items-center gap-1.5 text-xs text-muted"><span className="size-2.5 rounded-full bg-chart-spend ring-1 ring-forest/30" />Spendable</dt>
+                      <dd className="font-semibold">{rs(a.expendable)}</dd>
+                    </div>
+                  </dl>
+                  <SplitDonut savings={Number(a.savings)} expendable={Number(a.expendable)} label={a.bank} size={112} thickness={14} />
                 </div>
                 {a.cards.length > 0 && (
                   <div className="mt-4 space-y-2">

@@ -6,7 +6,8 @@ import { useParams } from "next/navigation";
 import useSWR from "swr";
 import { AppShell } from "@/components/AppShell";
 import { GoalIcon } from "@/components/GoalIcon";
-import { Card, ProgressBar, Spinner } from "@/components/ui";
+import { ProgressRing } from "@/components/charts";
+import { Card, Spinner } from "@/components/ui";
 import { fetcher, rs } from "@/lib/api";
 
 type Goal = {
@@ -44,15 +45,29 @@ export default function GoalPage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-6 flex items-end justify-between gap-2">
-                <div>
-                  <p className="text-sm text-muted">Saved</p>
-                  <p className="tabular text-3xl font-bold">{rs(g.saved)}</p>
+              <div className="mt-6 flex items-center justify-between gap-4">
+                <dl className="tabular space-y-3">
+                  <div><dt className="text-sm text-muted">Saved</dt><dd className="text-2xl font-bold whitespace-nowrap sm:text-3xl">{rs(g.saved)}</dd></div>
+                  <div><dt className="text-sm text-muted">Target</dt><dd className="font-semibold">{rs(g.target)}</dd></div>
+                  <div><dt className="text-sm text-muted">Remaining</dt><dd className="font-semibold">{rs(g.remaining)}</dd></div>
+                </dl>
+                <div className="sm:hidden">
+                <ProgressRing value={g.progress} size={120} thickness={12} label="Goal progress">
+                  <div className="text-center">
+                    <p className="tabular text-2xl font-bold">{Math.round(g.progress * 100)}%</p>
+                    <p className="text-[11px] text-muted">saved</p>
+                  </div>
+                </ProgressRing>
                 </div>
-                <p className="tabular pb-1 text-right text-sm text-muted">of {rs(g.target)}<br />
-                  <span className="text-lg font-bold text-ink">{Math.round(g.progress * 100)}%</span></p>
+                <div className="hidden sm:block">
+                <ProgressRing value={g.progress} size={156} thickness={16} label="Goal progress">
+                  <div className="text-center">
+                    <p className="tabular text-2xl font-bold">{Math.round(g.progress * 100)}%</p>
+                    <p className="text-[11px] text-muted">saved</p>
+                  </div>
+                </ProgressRing>
+                </div>
               </div>
-              <div className="mt-3"><ProgressBar value={g.progress} label="Goal progress" /></div>
             </Card>
 
             <div className="grid grid-cols-2 gap-3">
@@ -95,7 +110,7 @@ export default function GoalPage() {
                       <p className="text-sm font-medium">{SOURCE[h.source] ?? h.source}</p>
                       <p className="text-xs text-muted">{h.note || fmtDate(h.created_at)}</p>
                     </div>
-                    <p className="tabular text-sm font-semibold">{Number(h.amount) >= 0 ? "+" : "−"}{rs(Math.abs(Number(h.amount)))}</p>
+                    <p className="tabular text-sm font-semibold whitespace-nowrap">{Number(h.amount) >= 0 ? "+" : "−"}{rs(Math.abs(Number(h.amount)))}</p>
                   </li>
                 ))}
               </ul>

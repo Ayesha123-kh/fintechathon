@@ -104,22 +104,6 @@ export function ErrorText({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ProgressBar({ value, label }: { value: number; label?: string }) {
-  const pct = Math.max(0, Math.min(1, value)) * 100;
-  return (
-    <div
-      className="h-2.5 w-full overflow-hidden rounded-full bg-chart-track"
-      role="progressbar"
-      aria-valuenow={Math.round(pct)}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label={label}
-    >
-      <div className="h-full rounded-full bg-chart-save transition-[width] duration-700" style={{ width: `${pct}%` }} />
-    </div>
-  );
-}
-
 export function Empty({ icon, title, body, action }: { icon: React.ReactNode; title: string; body: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-2 py-8 text-center">

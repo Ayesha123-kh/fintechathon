@@ -13,3 +13,9 @@ export function GoalIcon({ name, size = "md" }: { name: string; size?: "md" | "l
     </span>
   );
 }
+
+/** Bare icon for use inside a progress ring. */
+export function GoalIconGlyph({ name }: { name: string }) {
+  const Icon = ICONS[name] ?? Target;
+  return <Icon className="size-4 text-forest dark:text-primary" aria-hidden />;
+}

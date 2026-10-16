@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useCallback } from "react";
 import useSWR from "swr";
 import { AppShell } from "@/components/AppShell";
-import { CategoryBars, SplitBar, SplitLegend } from "@/components/charts";
-import { GoalIcon } from "@/components/GoalIcon";
-import { Card, Empty, ProgressBar, Spinner } from "@/components/ui";
+import { CategoryBars, Donut, ProgressRing, SplitDonut, SplitLegend } from "@/components/charts";
+import { GoalIconGlyph } from "@/components/GoalIcon";
+import { Card, Empty, Spinner } from "@/components/ui";
 import { fetcher, rs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -58,32 +58,72 @@ function DashboardView({ d }: { d: Dashboard }) {
         </Link>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Card className="col-span-2 bg-forest text-forest-ink md:col-span-2">
-          <p className="text-sm opacity-80">Total balance</p>
-          <p className="tabular mt-1 text-3xl font-bold md:text-4xl">{rs(d.total_balance)}</p>
-          <div className="mt-4 flex flex-wrap gap-2 text-sm">
+      <Card className="flex items-center justify-between gap-4 md:p-7">
+        <div className="min-w-0 space-y-4">
+          <div>
+            <p className="text-sm text-muted">Total balance</p>
+            <p className="tabular text-2xl font-bold whitespace-nowrap sm:text-3xl md:text-4xl">{rs(d.total_balance)}</p>
+          </div>
+          <dl className="space-y-3">
+            <div>
+              <dt className="flex items-center gap-1.5 text-sm text-muted"><span className="size-2.5 rounded-full bg-chart-save" />Savings</dt>
+              <dd className="tabular text-lg font-bold whitespace-nowrap sm:text-xl">{rs(d.total_savings)}</dd>
+              <dd className="text-xs text-muted">Set aside for your goals</dd>
+            </div>
+            <div>
+              <dt className="flex items-center gap-1.5 text-sm text-muted"><span className="size-2.5 rounded-full bg-chart-spend ring-1 ring-forest/30" />Spendable</dt>
+              <dd className="tabular text-lg font-bold whitespace-nowrap sm:text-xl">{rs(d.expendable)}</dd>
+              <dd className="text-xs text-muted">Spent {rs(d.spent_this_month, { compact: true })} this month</dd>
+            </div>
+          </dl>
+          <div className="flex flex-wrap gap-2 text-sm">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 font-semibold text-primary-ink">
               <Sparkles className="size-3.5" aria-hidden /> {rs(d.saved_this_week)} saved this week
             </span>
             {Number(d.deal_savings_total) > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1">
                 <Tag className="size-3.5" aria-hidden /> {rs(d.deal_savings_total)} saved with deals
               </span>
             )}
           </div>
-        </Card>
-        <Card>
-          <p className="flex items-center gap-1.5 text-sm text-muted"><span className="size-2.5 rounded-full bg-chart-save" />Savings</p>
-          <p className="tabular mt-1 text-xl font-bold md:text-2xl">{rs(d.total_savings)}</p>
-          <p className="mt-1 text-xs text-muted">Set aside for your goals</p>
-        </Card>
-        <Card>
-          <p className="flex items-center gap-1.5 text-sm text-muted"><span className="size-2.5 rounded-full bg-chart-spend" />Spendable</p>
-          <p className="tabular mt-1 text-xl font-bold md:text-2xl">{rs(d.expendable)}</p>
-          <p className="mt-1 text-xs text-muted">Spent {rs(d.spent_this_month, { compact: true })} this month</p>
-        </Card>
-      </div>
+        </div>
+        <div className="sm:hidden"><Donut
+          size={136}
+          thickness={16}
+          label={`Total ${rs(d.total_balance)}: savings ${rs(d.total_savings)}, spendable ${rs(d.expendable)}`}
+          segments={[
+            { key: "s", label: "Savings", value: Number(d.total_savings), className: "stroke-chart-save" },
+            { key: "e", label: "Spendable", value: Number(d.expendable), className: "stroke-chart-spend" },
+          ]}
+          center={
+            <div>
+              <p className="text-[11px] text-muted">Total</p>
+              <p className="tabular text-lg font-bold">{rs(d.total_balance, { compact: true })}</p>
+              <p className="text-[11px] text-muted">
+                {Number(d.total_balance) ? Math.round((Number(d.total_savings) / Number(d.total_balance)) * 100) : 0}% saved
+              </p>
+            </div>
+          }
+        /></div>
+        <div className="hidden sm:block"><Donut
+          size={200}
+          thickness={22}
+          label={`Total ${rs(d.total_balance)}: savings ${rs(d.total_savings)}, spendable ${rs(d.expendable)}`}
+          segments={[
+            { key: "s", label: "Savings", value: Number(d.total_savings), className: "stroke-chart-save" },
+            { key: "e", label: "Spendable", value: Number(d.expendable), className: "stroke-chart-spend" },
+          ]}
+          center={
+            <div>
+              <p className="text-[11px] text-muted">Total</p>
+              <p className="tabular text-lg font-bold">{rs(d.total_balance, { compact: true })}</p>
+              <p className="text-[11px] text-muted">
+                {Number(d.total_balance) ? Math.round((Number(d.total_savings) / Number(d.total_balance)) * 100) : 0}% saved
+              </p>
+            </div>
+          }
+        /></div>
+      </Card>
 
       {!d.email_connected && hasData && (
         <Link href="/email" className="flex items-center gap-3 rounded-[var(--radius-card)] border border-dashed border-forest/40 bg-surface p-4">
@@ -105,28 +145,26 @@ function DashboardView({ d }: { d: Dashboard }) {
                 body="Tell your assistant what you're saving for, like “a car in 6 months”."
                 action={<Link href="?chat=1" className="mt-2 text-sm font-semibold text-forest dark:text-primary">Add a goal in chat</Link>} />
             ) : (
-              <ul className="space-y-3">
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {d.goals.map((g) => (
                   <li key={g.id}>
-                    <Link href={`/goals/${g.id}`} className="block rounded-2xl bg-surface-2 p-4 transition hover:brightness-[0.98]">
-                      <div className="flex items-center gap-3">
-                        <GoalIcon name={g.icon} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-baseline justify-between gap-2">
-                            <p className="truncate font-semibold">{g.name}</p>
-                            <p className="tabular text-sm font-semibold">{Math.round(g.progress * 100)}%</p>
-                          </div>
-                          <p className="tabular text-xs text-muted">
-                            {rs(g.saved)} of {rs(g.target)}
-                            {g.deadline && ` · by ${new Date(g.deadline).toLocaleDateString("en-PK", { month: "short", year: "numeric" })}`}
-                          </p>
+                    <Link href={`/goals/${g.id}`}
+                      className="flex h-full flex-col items-center gap-2 rounded-2xl bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
+                      <ProgressRing value={g.progress} size={88} thickness={9} label={`${g.name} progress`}>
+                        <div className="flex flex-col items-center">
+                          <GoalIconGlyph name={g.icon} />
+                          <span className="tabular text-sm font-bold">{Math.round(g.progress * 100)}%</span>
                         </div>
-                      </div>
-                      <div className="mt-3"><ProgressBar value={g.progress} label={`${g.name} progress`} /></div>
+                      </ProgressRing>
+                      <p className="line-clamp-2 text-sm font-semibold leading-tight">{g.name}</p>
+                      <p className="tabular text-xs text-muted">{rs(g.saved, { compact: true })} / {rs(g.target, { compact: true })}</p>
                       {g.status === "completed" ? (
-                        <p className="mt-2 text-xs font-semibold text-forest dark:text-primary">Completed 🎉</p>
-                      ) : Number(g.monthly_needed) > 0 && (
-                        <p className="mt-2 text-xs text-muted">Needs {rs(g.monthly_needed)}/month to stay on time</p>
+                        <p className="text-xs font-semibold text-forest dark:text-primary">Completed 🎉</p>
+                      ) : (
+                        <p className="text-[11px] text-muted">
+                          {g.deadline ? `by ${new Date(g.deadline).toLocaleDateString("en-PK", { month: "short", year: "numeric" })}` : "No deadline"}
+                          {Number(g.monthly_needed) > 0 && ` · ${rs(g.monthly_needed, { compact: true })}/mo`}
+                        </p>
                       )}
                     </Link>
                   </li>
@@ -143,18 +181,17 @@ function DashboardView({ d }: { d: Dashboard }) {
             {d.banks.length === 0 ? (
               <Empty icon={<PiggyBank className="size-6" />} title="No banks added" body="Tell your assistant which banks and wallets you use." />
             ) : (
-              <ul className="space-y-4">
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {d.banks.map((b) => (
                   <li key={b.account_id}>
-                    <Link href={`/banks#${b.account_id}`} className="block">
-                      <div className="mb-2 flex items-baseline justify-between gap-2">
-                        <p className="font-semibold">{b.bank_short}<span className="ml-2 text-xs font-normal text-muted">{b.nickname !== b.bank_short && b.nickname}{b.last4 && ` ••${b.last4}`}</span></p>
-                        <p className="tabular font-semibold">{rs(b.balance)}</p>
-                      </div>
-                      <SplitBar savings={Number(b.savings)} expendable={Number(b.expendable)} label={b.bank} />
-                      <div className="tabular mt-1.5 flex justify-between text-xs text-muted">
-                        <span>{rs(b.savings)} savings</span><span>{rs(b.expendable)} spendable</span>
-                      </div>
+                    <Link href={`/banks#${b.account_id}`}
+                      className="flex h-full flex-col items-center gap-2 rounded-2xl bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
+                      <SplitDonut savings={Number(b.savings)} expendable={Number(b.expendable)} label={b.bank} size={96} thickness={12} />
+                      <p className="text-sm font-semibold">{b.bank_short}{b.last4 && <span className="font-normal text-muted"> ••{b.last4}</span>}</p>
+                      <dl className="tabular grid w-full grid-cols-2 gap-1 text-[11px]">
+                        <div><dt className="text-muted">Savings</dt><dd className="font-semibold whitespace-nowrap">{rs(b.savings, { compact: true })}</dd></div>
+                        <div><dt className="text-muted">Spendable</dt><dd className="font-semibold whitespace-nowrap">{rs(b.expendable, { compact: true })}</dd></div>
+                      </dl>
                     </Link>
                   </li>
                 ))}
