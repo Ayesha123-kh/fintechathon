@@ -1,7 +1,9 @@
+"use client";
+
 import clsx from "clsx";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={clsx("rounded-[var(--radius-card)] bg-surface p-5 shadow-[0_1px_0_var(--line)]", className)} {...props} />;
@@ -44,20 +46,37 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 });
 
 export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { label?: string }>(
-  function Input({ label, className, id, ...props }, ref) {
+  function Input({ label, className, id, type, ...props }, ref) {
     const inputId = id ?? props.name;
+    const isPassword = type === "password";
+    const [visible, setVisible] = useState(false);
     return (
       <label htmlFor={inputId} className="block">
         {label && <span className="mb-1.5 block text-sm font-medium text-ink-2">{label}</span>}
-        <input
-          ref={ref}
-          id={inputId}
-          className={clsx(
-            "h-12 w-full rounded-2xl border border-line bg-surface-2 px-4 text-[15px] text-ink outline-none transition placeholder:text-muted focus:border-forest focus:bg-surface",
-            className,
+        <span className="relative block">
+          <input
+            ref={ref}
+            id={inputId}
+            type={isPassword && visible ? "text" : type}
+            className={clsx(
+              "h-12 w-full rounded-2xl border border-line bg-surface-2 px-4 text-[15px] text-ink outline-none transition placeholder:text-muted focus:border-forest focus:bg-surface",
+              isPassword && "pr-12",
+              className,
+            )}
+            {...props}
+          />
+          {isPassword && (
+            <button
+              type="button"
+              onClick={() => setVisible((v) => !v)}
+              aria-label={visible ? "Hide password" : "Show password"}
+              aria-pressed={visible}
+              className="absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-surface hover:text-ink"
+            >
+              {visible ? <EyeOff className="size-5" aria-hidden /> : <Eye className="size-5" aria-hidden />}
+            </button>
           )}
-          {...props}
-        />
+        </span>
       </label>
     );
   },
