@@ -1,9 +1,8 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Fingerprint, FlaskConical, LayoutDashboard, LogOut, Mail, Monitor, Moon, Settings2, Shield, Sun, X } from "lucide-react";
+import { Bell, Fingerprint, FlaskConical, LogOut, Monitor, Moon, Settings2, Shield, Sun, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
 import { api, errorText, fetcher } from "@/lib/api";
@@ -12,17 +11,33 @@ import { currentSubscription, disablePush, enablePush, pushSupported } from "@/l
 import { useSession } from "@/lib/session";
 import { applyTheme, getTheme, type ThemeChoice } from "@/lib/theme";
 import { ChatWidget } from "./ChatWidget";
+import { EmailSettings } from "./EmailSettings";
 import { Button, Logo, Spinner } from "./ui";
 
-const NAV = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/email", label: "Email", icon: Mail },
-];
+/** Open the settings sheet from anywhere, optionally scrolled to a section. */
+export function openSettings(section?: "email") {
+  window.dispatchEvent(new CustomEvent("bachat:open-settings", { detail: section }));
+}
+
+type EmailResult = { connected?: boolean; error?: string };
 
 export function AppShell({ children, onChatActivity }: { children: React.ReactNode; onChatActivity?: () => void }) {
   const { status, user } = useSession();
-  const pathname = usePathname();
   const [sheet, setSheet] = useState<"" | "settings" | "notifications">("");
+  const [emailResult, setEmailResult] = useState<EmailResult | undefined>();
+
+  // The Gmail sign-in returns to /dashboard?settings=email&connected=1 (or &error=...).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("settings") === "email") {
+      setEmailResult({ connected: q.has("connected"), error: q.get("error") ?? undefined });
+      setSheet("settings");
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    const open = () => setSheet("settings");
+    window.addEventListener("bachat:open-settings", open);
+    return () => window.removeEventListener("bachat:open-settings", open);
+  }, []);
   const { data: me } = useSWR<{ test_tools?: boolean }>(status === "active" ? "/me" : null, fetcher);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [sending, setSending] = useState(false);
@@ -37,7 +52,7 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
       const msg = errorText(e);
       setToast({
         error: true,
-        text: msg.startsWith("connect_gmail_first") ? "Connect a Gmail inbox on the Email screen first."
+        text: msg.startsWith("connect_gmail_first") ? "Connect a Gmail inbox in Settings first."
           : msg.startsWith("smtp_not_configured") ? "Add SMTP_USERNAME and SMTP_PASSWORD to backend/.env to send test emails."
             : msg.startsWith("add_a_bank_first") ? "Add a bank account in chat first." : msg,
       });
@@ -54,29 +69,13 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
       </main>
     );
   }
-  const nav = user.role === "admin" ? [...NAV, { href: "/admin", label: "Admin", icon: Shield }] : NAV;
-
   return (
-    <div className="min-h-dvh pb-24 md:pb-10">
+    <div className="min-h-dvh pb-10">
       <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/85 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
           <Link href="/dashboard" aria-label="Home">
             <Logo size={34} />
           </Link>
-          <nav className="ml-6 hidden gap-1 md:flex" aria-label="Main">
-            {nav.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className={clsx(
-                  "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
-                  pathname.startsWith(href) ? "bg-forest text-forest-ink" : "text-ink-2 hover:bg-hover",
-                )}
-              >
-                <Icon className="size-4" aria-hidden /> {label}
-              </Link>
-            ))}
-          </nav>
           <div className="ml-auto flex items-center gap-1">
             {me?.test_tools && (
               <button onClick={sendTestAlert} disabled={sending} aria-label="Send a test bank email" title="Send a test bank email"
@@ -99,20 +98,6 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
 
       <main className="mx-auto max-w-6xl px-4 pt-5">{children}</main>
 
-      <nav aria-label="Main" className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 px-6 pt-2 backdrop-blur md:hidden">
-        <div className="mx-auto flex max-w-md justify-between">
-          {nav.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href}
-              className={clsx("flex w-16 flex-col items-center gap-1 rounded-2xl py-1.5 text-[11px] font-semibold",
-                pathname.startsWith(href) ? "text-forest dark:text-primary" : "text-muted")}>
-              <span className={clsx("grid h-8 w-12 place-items-center rounded-full", pathname.startsWith(href) && "bg-primary/40")}>
-                <Icon className="size-5" aria-hidden />
-              </span>
-              {label}
-            </Link>
-          ))}
-        </div>
-      </nav>
 
       <Suspense>
         <ChatWidget onActivity={onChatActivity} />
@@ -128,7 +113,7 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
 
       {sheet && (
         <Sheet title={sheet === "settings" ? "Settings" : "Notifications"} onClose={() => setSheet("")}>
-          {sheet === "settings" ? <SettingsPanel /> : <NotificationsPanel />}
+          {sheet === "settings" ? <SettingsPanel emailResult={emailResult} /> : <NotificationsPanel />}
         </Sheet>
       )}
     </div>
@@ -157,7 +142,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-function SettingsPanel() {
+function SettingsPanel({ emailResult }: { emailResult?: EmailResult }) {
   const { user, signOut, reload, hasPasskey } = useSession();
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
@@ -213,6 +198,7 @@ function SettingsPanel() {
         <p className="font-semibold">{user?.full_name}</p>
         <p className="text-sm text-muted">{user?.email}</p>
       </div>
+      <EmailSettings result={emailResult} />
       {passkeySupported() && (
         <Button variant="outline" className="w-full justify-start" onClick={addPasskey} loading={busy === "passkey"}>
           <Fingerprint className="size-5" aria-hidden />
@@ -226,6 +212,11 @@ function SettingsPanel() {
         </Button>
       )}
       <ThemePicker />
+      {user?.role === "admin" && (
+        <Link href="/admin" className="flex w-full items-center gap-2 rounded-full border border-line px-5 py-2.5 text-[15px] font-semibold hover:bg-hover">
+          <Shield className="size-5" aria-hidden /> Admin dashboard
+        </Link>
+      )}
       <p className="text-xs text-muted">
         Everything else, like your banks, goals, savings rule, language, sadqah reminders or the investment board,
         is changed by telling your assistant in the chat.

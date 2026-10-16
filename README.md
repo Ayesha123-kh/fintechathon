@@ -154,7 +154,7 @@ The most interesting question the graph can answer: **why does `scoped_session()
   - [ ] `docker compose up -d --force-recreate backend worker`
   - [ ] `docker compose exec backend alembic downgrade 0001`
   - [ ] `docker compose exec backend alembic upgrade head`
-- [ ] Sign in as Osama, open **Email → Connect Gmail**, then use the navbar **Test bank email** button to send a simulated credit/debit alert
+- [ ] Sign in as Osama, open **Settings (sliders icon) → Connect Gmail**, then use the navbar **Test bank email** button to send a simulated credit/debit alert
 - [ ] Before production, remove the demo data with `alembic downgrade 0001` and delete `backend/alembic/versions/0002_demo_data.py`
 
 ## 7. Before Railway

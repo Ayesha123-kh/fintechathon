@@ -529,11 +529,11 @@ async def avail_deal(member_key: str, amount_spent: float, deal_id: str | None =
 @mcp.tool()
 async def email_connection_status(member_key: str) -> dict:
     """Whether a Gmail inbox is connected for automatic transaction tracking. If not, tell the person to open
-    the 'Email' screen in the app (/email) and tap Connect Gmail: it is read-only and only bank alerts are used."""
+    Settings (the sliders icon at the top right) and tap Connect Gmail: it is read-only and only bank alerts are used."""
     async with member(member_key) as (s, _):
         rows = (await s.execute(select(EmailConnection))).scalars().all()
         return out({"connected": [{"email": r.email_address, "status": r.status, "last_synced_at": r.last_synced_at}
-                                  for r in rows], "connect_url": "/email"})
+                                  for r in rows], "connect_where": "Settings > Email connection"})
 
 
 @mcp.tool()

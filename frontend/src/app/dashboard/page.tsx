@@ -4,7 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, ChevronRight, Mail, MessageCircle, PiggyBa
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import useSWR from "swr";
-import { AppShell } from "@/components/AppShell";
+import { AppShell, openSettings } from "@/components/AppShell";
 import { BankModal } from "@/components/BankModal";
 import { CategoryBars, Donut, ProgressRing, SplitDonut, SplitLegend } from "@/components/charts";
 import { GoalIconGlyph } from "@/components/GoalIcon";
@@ -129,11 +129,11 @@ function DashboardView({ d }: { d: Dashboard }) {
       </Card>
 
       {!d.email_connected && hasData && (
-        <Link href="/email" className="flex items-center gap-3 rounded-[var(--radius-card)] border border-dashed border-forest/40 bg-surface p-4">
+        <button type="button" onClick={() => openSettings("email")} className="flex w-full items-center gap-3 text-left rounded-[var(--radius-card)] border border-dashed border-forest/40 bg-surface p-4">
           <Mail className="size-5 text-forest dark:text-primary" aria-hidden />
           <p className="flex-1 text-sm"><span className="font-semibold">Connect your email</span> to track bank transactions automatically.</p>
           <ChevronRight className="size-4 text-muted" aria-hidden />
-        </Link>
+        </button>
       )}
 
       <div className="grid gap-5 lg:grid-cols-5">

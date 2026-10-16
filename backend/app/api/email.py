@@ -36,18 +36,18 @@ async def google_start(p: Principal = Depends(current_principal)) -> dict:
 @router.get("/google/callback")
 async def google_callback(request: Request, code: str | None = None, state: str | None = None,
                           error: str | None = None) -> RedirectResponse:
-    target = f"{settings.frontend_url}/email"
+    target = f"{settings.frontend_url}/dashboard?settings=email"
     if error or not code or not state:
-        return RedirectResponse(f"{target}?error={error or 'cancelled'}")
+        return RedirectResponse(f"{target}&error={error or 'cancelled'}")
     user_id = gmail.user_from_state(state)
     if not user_id:
-        return RedirectResponse(f"{target}?error=expired")
+        return RedirectResponse(f"{target}&error=expired")
     try:
         conn = await gmail.exchange_code(user_id, code)
     except Exception:
-        return RedirectResponse(f"{target}?error=exchange_failed")
+        return RedirectResponse(f"{target}&error=exchange_failed")
     asyncio.get_running_loop().create_task(gmail.sync_connection(conn.id, user_id))
-    return RedirectResponse(f"{target}?connected=1")
+    return RedirectResponse(f"{target}&connected=1")
 
 
 @router.post("/connections/{conn_id}/sync")

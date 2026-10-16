@@ -141,7 +141,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
         <button
           onClick={() => setOpen(true)}
           aria-label="Open chat with your assistant"
-          className="fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 grid size-15 place-items-center rounded-full bg-forest text-forest-ink shadow-lg shadow-forest/30 transition hover:scale-105 md:bottom-6"
+          className="fixed right-4 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-40 grid size-15 place-items-center rounded-full bg-forest text-forest-ink shadow-lg shadow-forest/30 transition hover:scale-105"
         >
           <MessageCircle className="size-7" aria-hidden />
           {unread > 0 && (
@@ -153,7 +153,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end md:inset-auto md:right-6 md:bottom-6" role="dialog" aria-label="Chat">
+        <div className="fixed inset-0 z-50 flex items-end justify-end md:inset-auto md:right-6" role="dialog" aria-label="Chat">
           <div className="absolute inset-0 bg-ink/30 md:hidden" onClick={close} />
           <section className="relative flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-[1.75rem] bg-surface shadow-2xl md:h-[640px] md:w-[400px] md:rounded-[1.75rem]">
             <header className="flex items-center gap-3 bg-forest px-4 py-3.5 text-forest-ink">
