@@ -253,3 +253,62 @@ body {
     animation: none;
   }
 }
+
+/* ---------- Panels that drop down from a top-bar icon (phones) ---------- */
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes drop-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.6);
+  }
+}
+@media (max-width: 767px) {
+  .drop-tr,
+  .drop-tl {
+    animation: drop-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.12);
+  }
+  .drop-tr {
+    transform-origin: top right;
+  }
+  .drop-tl {
+    transform-origin: top left;
+  }
+  .drop-tr.is-closing,
+  .drop-tl.is-closing {
+    animation: drop-out 0.18s ease-in forwards;
+  }
+  .fade-closing {
+    transition: opacity 0.18s;
+    opacity: 0;
+  }
+}
+/* Pointer joining a dropped panel to the icon it came from. */
+.drop-tail {
+  position: absolute;
+  top: -7px;
+  width: 16px;
+  height: 16px;
+  transform: rotate(45deg);
+  border-top: 2px solid var(--primary);
+  border-left: 2px solid var(--primary);
+  border-top-left-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drop-tr,
+  .drop-tl {
+    animation: none !important;
+  }
+}

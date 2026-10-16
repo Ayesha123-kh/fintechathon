@@ -17,6 +17,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const router = useRouter();
   const { user } = useSession();
   const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [waiting, setWaiting] = useState(false);
@@ -29,10 +30,20 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
 
   // On phones the chat button lives in the top bar (AppShell): it opens the chat and shows the unread count.
   useEffect(() => {
-    const openChat = () => setOpen(true);
-    window.addEventListener("bachat:open-chat", openChat);
-    return () => window.removeEventListener("bachat:open-chat", openChat);
+    const toggle = () => (openRef.current ? closeRef.current() : setOpen(true));
+    window.addEventListener("bachat:toggle-chat", toggle);
+    return () => window.removeEventListener("bachat:toggle-chat", toggle);
   }, []);
+  // The top-bar chat icon morphs into a cross while the chat is open.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("bachat:chat-state", { detail: open && !closing }));
+  }, [open, closing]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("bachat:chat-unread", { detail: unread }));
   }, [unread]);
@@ -63,10 +74,16 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     if (params.get("chat") === "1") setOpen(true);
   }, [params]);
 
-  const close = () => {
-    setOpen(false);
-    if (params.get("chat")) router.replace(window.location.pathname);
-  };
+  const close = useCallback(() => {
+    setClosing(true); // plays the shrink-back animation, then unmounts
+    setTimeout(() => {
+      setOpen(false);
+      setClosing(false);
+    }, 170);
+    if (new URLSearchParams(window.location.search).get("chat")) router.replace(window.location.pathname);
+  }, [router]);
+  const closeRef = useRef(close);
+  closeRef.current = close;
 
   // History + live stream (SSE). The stream also tells the server we're online (no duplicate pushes).
   useEffect(() => {
@@ -248,9 +265,12 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
 
       {open && (
         <div role="dialog" aria-label="Chat"
-          className="fixed inset-0 z-50 flex items-end justify-center p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:inset-auto md:right-6 md:bottom-6 md:p-0">
-          <div className="absolute inset-0 touch-none bg-ink/30 md:hidden" onClick={close} />
-          <section className="relative flex h-full max-h-[760px] w-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border-2 border-primary bg-surface shadow-2xl dark:border-forest md:h-[640px] md:max-h-[calc(100dvh-3rem)] md:w-[400px]">
+          className="fixed inset-x-0 top-16 bottom-0 z-50 flex items-start justify-center p-3 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:inset-auto md:right-6 md:bottom-6 md:p-0">
+          {/* Phones: the chat drops from the chat icon in the top bar, which stays visible above this layer. */}
+          <div className={clsx("absolute inset-0 touch-none bg-ink/30 md:hidden", closing && "fade-closing")} onClick={close} />
+          <div className={clsx("drop-tr relative flex h-full w-full min-w-0 md:h-auto md:w-auto", closing && "is-closing")}>
+          <span className="drop-tail right-4 bg-forest md:hidden" aria-hidden />
+          <section className="relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border-2 border-primary bg-surface shadow-2xl dark:border-forest md:h-[640px] md:max-h-[calc(100dvh-3rem)] md:w-[400px]">
             <header className="flex items-center gap-3 bg-forest px-4 py-3.5 text-forest-ink">
               <div className="grid size-10 place-items-center rounded-full bg-primary text-primary-ink">
                 <MessageCircle className="size-5" aria-hidden />
@@ -261,7 +281,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                   {status === "ready" ? "Assistant · Savings Coach · Deals Advisor" : status === "error" ? "Reconnecting…" : "Setting up your assistant…"}
                 </p>
               </div>
-              <button onClick={close} aria-label="Close chat" className="grid size-9 place-items-center rounded-full hover:bg-white/10">
+              <button onClick={close} aria-label="Close chat" className="grid size-9 place-items-center rounded-full hover:bg-white/10 max-md:hidden">
                 <X className="size-5" />
               </button>
             </header>
@@ -346,6 +366,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
               )}
             </form>
           </section>
+          </div>
         </div>
       )}
     </>

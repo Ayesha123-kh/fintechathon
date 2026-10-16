@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { Bell, Fingerprint, FlaskConical, MessageCircle, LogOut, Monitor, Moon, Shield, Sun, X } from "lucide-react";
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
 import { api, errorText, fetcher } from "@/lib/api";
 import { passkeySupported, registerPasskey } from "@/lib/passkey";
@@ -119,22 +119,32 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
 }
 
 function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const [closing, setClosing] = useState(false);
+  const close = useCallback(() => {
+    setClosing(true);
+    setTimeout(onClose, 170);
+  }, [onClose]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [close]);
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-start md:justify-end" role="dialog" aria-label={title}>
-      <div className="absolute inset-0 bg-ink/30" onClick={onClose} />
-      <div className="safe-bottom relative max-h-[85dvh] w-full overflow-y-auto rounded-t-[1.75rem] bg-surface p-5 md:mt-16 md:mr-4 md:w-96 md:rounded-[1.75rem]">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-hover">
-            <X className="size-5" />
-          </button>
+    // Phones: drops down from the avatar, below the top bar. Laptops: a panel under the avatar on the right.
+    <div className="fixed inset-x-0 top-16 bottom-0 z-50 flex items-start justify-center px-3 pt-2.5 md:inset-0 md:justify-end md:p-0"
+      role="dialog" aria-label={title}>
+      <div className={clsx("absolute inset-0 touch-none bg-ink/30", closing && "fade-closing")} onClick={close} />
+      <div className={clsx("drop-tl relative w-full md:mt-16 md:mr-4 md:w-96", closing && "is-closing")}>
+        <span className="drop-tail left-4 bg-surface md:hidden" aria-hidden />
+        <div className="max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-[1.75rem] border-2 border-primary bg-surface p-5 dark:border-forest md:max-h-[85dvh]">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold">{title}</h2>
+            <button onClick={close} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-hover">
+              <X className="size-5" />
+            </button>
+          </div>
+          {children}
         </div>
-        {children}
       </div>
     </div>
   );
@@ -258,20 +268,30 @@ function initials(name: string): string {
   return letters.toUpperCase();
 }
 
-/** Phones only: opens the chat (ChatWidget) and shows its unread count. */
+/** Phones only: toggles the chat (ChatWidget), shows the unread count and morphs into a cross while open. */
 function HeaderChatButton() {
   const [unread, setUnread] = useState(0);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
-    const on = (e: Event) => setUnread(Number((e as CustomEvent).detail) || 0);
-    window.addEventListener("bachat:chat-unread", on);
-    return () => window.removeEventListener("bachat:chat-unread", on);
+    const onUnread = (e: Event) => setUnread(Number((e as CustomEvent).detail) || 0);
+    const onState = (e: Event) => setOpen(Boolean((e as CustomEvent).detail));
+    window.addEventListener("bachat:chat-unread", onUnread);
+    window.addEventListener("bachat:chat-state", onState);
+    return () => {
+      window.removeEventListener("bachat:chat-unread", onUnread);
+      window.removeEventListener("bachat:chat-state", onState);
+    };
   }, []);
   return (
-    <button onClick={() => window.dispatchEvent(new Event("bachat:open-chat"))}
-      aria-label={unread ? `Open chat, ${unread} unread` : "Open chat with your assistant"}
+    <button onClick={() => window.dispatchEvent(new Event("bachat:toggle-chat"))}
+      aria-label={open ? "Close chat" : unread ? `Open chat, ${unread} unread` : "Open chat with your assistant"}
+      aria-expanded={open}
       className="relative grid size-10 place-items-center rounded-full bg-forest text-forest-ink transition hover:brightness-110 md:hidden">
-      <MessageCircle className="size-5" aria-hidden />
-      {unread > 0 && (
+      <MessageCircle aria-hidden className={clsx("absolute size-5 transition-all duration-300",
+        open ? "scale-50 rotate-90 opacity-0" : "scale-100 rotate-0 opacity-100")} />
+      <X aria-hidden className={clsx("absolute size-5 transition-all duration-300",
+        open ? "scale-100 rotate-0 opacity-100" : "scale-50 -rotate-90 opacity-0")} />
+      {unread > 0 && !open && (
         <span className="absolute -top-1 -right-1 grid min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-ink ring-2 ring-bg">
           {unread}
         </span>
