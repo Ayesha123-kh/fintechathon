@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Fingerprint, FlaskConical, Landmark, LayoutDashboard, LogOut, Mail, Monitor, Moon, Settings2, Shield, Sun, X } from "lucide-react";
+import { Bell, Fingerprint, FlaskConical, LayoutDashboard, LogOut, Mail, Monitor, Moon, Settings2, Shield, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
@@ -16,7 +16,6 @@ import { Button, Logo, Spinner } from "./ui";
 
 const NAV = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/banks", label: "Banks", icon: Landmark },
   { href: "/email", label: "Email", icon: Mail },
 ];
 

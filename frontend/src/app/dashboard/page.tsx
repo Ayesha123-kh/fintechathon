@@ -2,9 +2,10 @@
 
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, Mail, MessageCircle, PiggyBank, Sparkles, Tag, Target } from "lucide-react";
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import useSWR from "swr";
 import { AppShell } from "@/components/AppShell";
+import { BankModal } from "@/components/BankModal";
 import { CategoryBars, Donut, ProgressRing, SplitDonut, SplitLegend } from "@/components/charts";
 import { GoalIconGlyph } from "@/components/GoalIcon";
 import { Card, Empty, Spinner } from "@/components/ui";
@@ -35,11 +36,13 @@ export default function DashboardPage() {
 
 function DashboardView({ d }: { d: Dashboard }) {
   const { user } = useSession();
+  const [bank, setBank] = useState<string | null>(null);
   const first = user?.full_name?.split(" ")[0];
   const hasData = d.banks.length > 0 || d.goals.length > 0;
 
   return (
     <div className="space-y-5">
+      {bank && <BankModal accountId={bank} onClose={() => setBank(null)} />}
       <div>
         <p className="text-sm text-muted">Assalam o Alaikum{first ? `, ${first}` : ""}</p>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Your money at a glance</h1>
@@ -184,15 +187,15 @@ function DashboardView({ d }: { d: Dashboard }) {
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {d.banks.map((b) => (
                   <li key={b.account_id}>
-                    <Link href={`/banks#${b.account_id}`}
-                      className="flex h-full flex-col items-center gap-2 rounded-2xl border border-primary bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
+                    <button type="button" onClick={() => setBank(b.account_id)} aria-label={`${b.bank} details`}
+                      className="flex h-full w-full flex-col items-center gap-2 rounded-2xl border border-primary bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
                       <SplitDonut savings={Number(b.savings)} expendable={Number(b.expendable)} label={b.bank} size={96} thickness={12} />
                       <p className="text-sm font-semibold">{b.bank_short}{b.last4 && <span className="font-normal text-muted"> ••{b.last4}</span>}</p>
                       <dl className="tabular grid w-full grid-cols-2 gap-1 text-[11px]">
                         <div><dt className="text-muted">Savings</dt><dd className="font-semibold whitespace-nowrap">{rs(b.savings, { compact: true })}</dd></div>
                         <div><dt className="text-muted">Spendable</dt><dd className="font-semibold whitespace-nowrap">{rs(b.expendable, { compact: true })}</dd></div>
                       </dl>
-                    </Link>
+                    </button>
                   </li>
                 ))}
               </ul>
