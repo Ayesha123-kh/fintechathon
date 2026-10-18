@@ -1,8 +1,8 @@
 """Write OpenMausBot's config.json before the server starts (instances are read at boot).
 
 Merges into an existing file so settings changed later through OMB itself are kept,
-and only overwrites the keys this deployment owns: the vLLM engine instance, the
-decision model, the two MCP servers that point at our backend, and feature flags.
+and only overwrites the keys this deployment owns: the vLLM engine instance, the optional
+third-party desk instance, the decision model, the two MCP servers that point at our backend, and feature flags.
 """
 
 import json
@@ -22,6 +22,18 @@ def build(existing: dict) -> dict:
         "environment": {"VLLM_API_KEY": settings.llm_api_key or "EMPTY"},
         "config": {"url": settings.llm_base_url, "apiKeyEnv": "VLLM_API_KEY", "model": settings.llm_model},
     }
+    # Shared desks (public data only) may run on a third-party OpenAI-compatible LLM.
+    if settings.desk_llm_enabled:
+        instances[settings.desk_instance_id] = {
+            "driver": "openai-compat",
+            "displayName": f"Desks ({settings.desk_llm_model})",
+            "icon": {"kind": "preset", "preset": "openai"},
+            "environment": {"DESK_LLM_API_KEY": settings.desk_llm_api_key or "EMPTY"},
+            "config": {"url": settings.desk_llm_base_url, "apiKeyEnv": "DESK_LLM_API_KEY",
+                       "model": settings.desk_llm_model},
+        }
+    else:
+        instances.pop(settings.desk_instance_id, None)
     cfg["instances"] = instances
 
     if settings.decider_base_url:

@@ -28,6 +28,7 @@ from app.models import (
     UserProfile,
 )
 from app.services.categorize import categorize
+from app.services.merchant_screen import classify_payee, status_for
 from app.services.text import normalize_name
 
 log = logging.getLogger(__name__)
@@ -54,12 +55,14 @@ async def resolve_merchant(name: str, description: str = "") -> tuple[uuid.UUID 
     category, sub = await categorize(name, description)
     if category in ("transfer", "income"):
         return None, category
+    # The self-hosted model decides whether this is a business the deal bots may look up or a private payee.
+    status = status_for(await classify_payee(name, description))
     async with system_session() as s:
-        # A new merchant starts as 'pending': the deal Source Scout will find its website and socials.
+        # A business starts as 'pending': the deal Source Scout will find its website and socials.
         row = await s.execute(
             insert(Merchant)
             .values(name=name.strip()[:160], normalized_name=key, category_slug=category, subcategory=sub,
-                    seen_in_transactions=1)
+                    seen_in_transactions=1, sources_status=status)
             .on_conflict_do_update(index_elements=["normalized_name"],
                                    set_={"seen_in_transactions": Merchant.seen_in_transactions + 1})
             .returning(Merchant.id, Merchant.category_slug)
@@ -130,7 +133,20 @@ async def record_transaction(
 
     if is_income and profile:
         await allocate_income(s, user_id, amount, account_id=account_id, transaction_id=tx.id)
+    if direction == "debit" and merchant_id and not is_income:
+        await _detect_deal_use(s, user_id, tx)
     return tx
+
+
+async def _detect_deal_use(s: AsyncSession, user_id: uuid.UUID, tx: Transaction) -> None:
+    """If this purchase uses a deal the person was told about, count the saving. Never blocks the transaction."""
+    from app.services.deal_detect import detect_redemption
+
+    try:
+        async with s.begin_nested():
+            await detect_redemption(s, user_id, tx)
+    except Exception:
+        log.exception("deal detection failed for transaction %s", tx.id)
 
 
 # ---------------------------------------------------------------- savings allocation

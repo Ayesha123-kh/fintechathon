@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.deps import Principal, current_principal, own_db
+from app.core.deps import Principal, own_db, user_principal
 from app.models import (
     Bank,
     Card,
@@ -34,7 +34,7 @@ router = APIRouter(tags=["finance"])
 
 
 @router.get("/me")
-async def me(p: Principal = Depends(current_principal), s: AsyncSession = Depends(own_db)) -> dict:
+async def me(p: Principal = Depends(user_principal), s: AsyncSession = Depends(own_db)) -> dict:
     user = await s.get(User, p.user_id)
     profile = await s.get(UserProfile, p.user_id)
     room = await s.get(ChatRoom, p.user_id)
@@ -54,7 +54,7 @@ class MePatch(BaseModel):
 
 
 @router.patch("/me")
-async def update_me(body: MePatch, p: Principal = Depends(current_principal),
+async def update_me(body: MePatch, p: Principal = Depends(user_principal),
                     s: AsyncSession = Depends(own_db)) -> dict:
     user = await s.get(User, p.user_id)
     profile = await s.get(UserProfile, p.user_id)
@@ -68,7 +68,7 @@ async def update_me(body: MePatch, p: Principal = Depends(current_principal),
 
 
 @router.get("/dashboard")
-async def get_dashboard(p: Principal = Depends(current_principal), s: AsyncSession = Depends(own_db)) -> dict:
+async def get_dashboard(p: Principal = Depends(user_principal), s: AsyncSession = Depends(own_db)) -> dict:
     data = await finance.dashboard(s, p.user_id)
     data["deals_for_you"] = await find_deals(s, p.user_id, limit=6)
     data["unread_notifications"] = await s.scalar(
@@ -122,7 +122,7 @@ async def goal_detail(goal_id: uuid.UUID, s: AsyncSession = Depends(own_db)) -> 
 
 
 @router.get("/banks")
-async def bank_details(p: Principal = Depends(current_principal), s: AsyncSession = Depends(own_db)) -> dict:
+async def bank_details(p: Principal = Depends(user_principal), s: AsyncSession = Depends(own_db)) -> dict:
     data = await finance.dashboard(s, p.user_id)
     cards = (await s.execute(select(Card, Bank.name).join(Bank, Bank.id == Card.bank_id))).all()
     accounts = []
@@ -157,7 +157,7 @@ async def transactions(days: int = 30, category: str | None = None, account_id: 
 
 
 @router.get("/deals")
-async def deals(category: str | None = None, q: str | None = None, p: Principal = Depends(current_principal),
+async def deals(category: str | None = None, q: str | None = None, p: Principal = Depends(user_principal),
                 s: AsyncSession = Depends(own_db)) -> list[dict]:
     return await find_deals(s, p.user_id, category=category, query=q, limit=30)
 

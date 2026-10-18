@@ -1,41 +1,27 @@
-# Development stack:  cp .env.example .env  (and each subfolder's .env.example -> .env), then
+# Development stack:  cp .env.example .env  (fill in the secrets), then
 #   docker compose up --build
 # Web app: http://localhost:3000   API docs: http://localhost:8000/api/docs
 #
+# Every setting lives in the one root .env; nothing is defaulted here. backend/.env is a symlink to it, which the
+# API and the scheduler read whole. The agents container (omb) runs bots and a browser, so ai-ml/.env is a small
+# file that lists only the variables omb needs, each pulled from the root .env (no JWT / encryption / SMTP / OAuth /
+# database-owner secrets reach it).
+#
 # Models (Qwen3.5-9B, STT, decision model) run separately on vLLM; by default they are
 # expected on the host machine (host.docker.internal). Point the *_BASE_URL vars elsewhere if remote.
-
-x-shared-secrets: &shared-secrets
-  INTERNAL_API_KEY: ${INTERNAL_API_KEY:-change-me-internal}
-  MCP_USER_TOKEN: ${MCP_USER_TOKEN:-change-me-mcp-user}
-  MCP_MARKET_TOKEN: ${MCP_MARKET_TOKEN:-change-me-mcp-market}
-
-x-backend-env: &backend-env
-  <<: *shared-secrets
-  DATABASE_URL: postgresql+asyncpg://app_user:${APP_DB_PASSWORD:-app_password}@postgres:5432/fintech
-  MIGRATION_DATABASE_URL: postgresql+asyncpg://fintech_owner:${POSTGRES_PASSWORD:-owner_password}@postgres:5432/fintech
-  APP_DB_PASSWORD: ${APP_DB_PASSWORD:-app_password}
-  REDIS_URL: redis://dragonfly:6379/0
-  OMB_GATEWAY_URL: http://omb:8790
-  LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:8001/v1}
-  LLM_API_KEY: ${LLM_API_KEY:-EMPTY}
-  LLM_MODEL: ${LLM_MODEL:-qwen3.5-9b}
-  STT_BASE_URL: ${STT_BASE_URL:-http://host.docker.internal:8002/v1}
-  STT_API_KEY: ${STT_API_KEY:-EMPTY}
-  STT_MODEL: ${STT_MODEL:-Qwen3-ASR-0.6B}
 
 services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: fintech_owner
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-owner_password}
-      POSTGRES_DB: fintech
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports: ["127.0.0.1:5433:5432"]
     volumes: [pg_data:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fintech_owner -d fintech"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -57,10 +43,7 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
-    env_file:
-      - path: ./backend/.env
-        required: false
-    environment: *backend-env
+    env_file: ./backend/.env # a symlink to the root .env
     command: ["api"]
     ports: ["127.0.0.1:8000:8000"]
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -77,10 +60,7 @@ services:
   worker:
     build: ./backend
     restart: unless-stopped
-    env_file:
-      - path: ./backend/.env
-        required: false
-    environment: *backend-env
+    env_file: ./backend/.env # a symlink to the root .env
     command: ["worker"]
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:
@@ -93,15 +73,7 @@ services:
     init: false # the image runs tini itself
     stop_grace_period: 30s
     shm_size: 512m
-    env_file:
-      - path: ./ai-ml/.env
-        required: false
-    environment:
-      <<: *shared-secrets
-      BACKEND_URL: http://backend:8000
-      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:8001/v1}
-      LLM_API_KEY: ${LLM_API_KEY:-EMPTY}
-      LLM_MODEL: ${LLM_MODEL:-qwen3.5-9b}
+    env_file: ./ai-ml/.env # only what omb needs, taken from the root .env
     expose: ["8790"]
     ports: ["127.0.0.1:8790:8790"]
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -113,7 +85,7 @@ services:
     build:
       context: ./frontend
       args:
-        BACKEND_INTERNAL_URL: http://backend:8000
+        BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}
     restart: unless-stopped
     ports: ["3000:3000"]
     depends_on: [backend]

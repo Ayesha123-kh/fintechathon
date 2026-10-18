@@ -37,12 +37,16 @@ MCP_MARKET_TOKEN=<random>
 JWT_SECRET=<random>
 ENCRYPTION_KEY=<Fernet key>
 APP_DB_PASSWORD=<random>
+ADMIN_EMAIL=<admin email: the app admin and the OpenMausBot sign-in>
 LLM_BASE_URL=https://<your-vllm-host>/v1
 LLM_API_KEY=<key>
 LLM_MODEL=qwen3.5-9b
 STT_BASE_URL=https://<your-vllm-stt-host>/v1
 STT_API_KEY=<key>
 STT_MODEL=Qwen3-ASR-0.6B
+DECIDER_BASE_URL=https://<decision-model-host>/v1   # optional; OMB only accepts https here
+DECIDER_API_KEY=...
+DECIDER_MODEL=...
 ```
 
 Generate them with `python -c "import secrets;print(secrets.token_urlsafe(32))"` and
@@ -62,7 +66,7 @@ PUBLIC_API_URL=https://<your-frontend-domain>/api
 CORS_ORIGINS=["https://<your-frontend-domain>"]
 COOKIE_SECURE=true
 WEBAUTHN_RP_ID=<your-frontend-domain without https://>
-... plus every shared variable above, SMTP_*, VAPID_*, GOOGLE_*, ADMIN_EMAIL, ADMIN_PASSWORD
+... plus every shared variable above (including ADMIN_EMAIL), SMTP_*, VAPID_*, GOOGLE_*, ADMIN_PASSWORD
 ```
 
 `MIGRATION_DATABASE_URL` must use the `postgresql+asyncpg://` scheme. Copy Railway's URL and change the prefix.
@@ -73,11 +77,13 @@ Postgres row level security actually applies (it is bypassed for superusers).
 
 ```
 BACKEND_URL=http://backend.railway.internal:8000
-INTERNAL_API_KEY / MCP_USER_TOKEN / MCP_MARKET_TOKEN / LLM_* = the shared variables
+INTERNAL_API_KEY / MCP_USER_TOKEN / MCP_MARKET_TOKEN / LLM_* / DECIDER_* = the shared variables
 LLM_SUPPORTS_VISION=true
-DECIDER_BASE_URL=https://<decision-model-host>/v1   # optional; OMB only accepts https here
-DECIDER_API_KEY=...
-DECIDER_MODEL=...
+DESK_LLM_BASE_URL=https://<third-party-openai-compatible-host>/v1   # optional: shared desks only (public data)
+DESK_LLM_API_KEY=<key>
+DESK_LLM_MODEL=<model>
+DESK_LLM_SUPPORTS_VISION=false
+OMB_SIGNIN_EMAILS=${{shared.ADMIN_EMAIL}}           # same admin as the app
 ```
 
 **frontend**:

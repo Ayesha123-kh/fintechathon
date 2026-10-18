@@ -24,8 +24,10 @@ from app.models import (
     Bank,
     BankAccount,
     Card,
+    CardProduct,
     CoverageRequest,
     Deal,
+    DealRedemption,
     EmailConnection,
     Goal,
     MarketSignal,
@@ -38,7 +40,7 @@ from app.models import (
     UserProfile,
     WatchCluster,
 )
-from app.services import finance
+from app.services import deal_detect, finance
 from app.services.deals import estimate_saving
 from app.services.deals import find_deals as find_deals_svc
 from app.services.notify import notify
@@ -273,6 +275,25 @@ async def list_banks(member_key: str) -> list[dict]:
         return [{"name": b.name, "short": b.short_name, "kind": b.kind} for b in banks]
 
 
+def _product_row(p: CardProduct) -> dict:
+    return {"name": p.name, "network": p.network, "tier": p.tier, "type": p.card_type, "islamic": p.is_islamic,
+            "confidence": p.confidence}
+
+
+@mcp.tool()
+async def list_card_products(member_key: str, bank: str, card_type: Literal["debit", "credit"] | None = None) -> list[dict]:
+    """The cards a bank issues (name, network, tier, debit/credit), from our catalog. Offer these when the person
+    adds a card so names and tiers stay consistent. 'confidence' is how sure we are the card still exists
+    (official > bank_site > weak); a null network means the bank's page did not say, so ask the person.
+    The person may own a card that is not listed: still save it with add_card."""
+    async with member(member_key) as (s, _):
+        b = await _bank_by_name(s, bank)
+        stmt = select(CardProduct).where(CardProduct.bank_id == b.id).order_by(CardProduct.card_type, CardProduct.name)
+        if card_type:
+            stmt = stmt.where(CardProduct.card_type == card_type)
+        return [_product_row(p) for p in (await s.execute(stmt)).scalars()]
+
+
 @mcp.tool()
 async def add_bank_account(member_key: str, bank: str, account_type: Literal["current", "savings", "wallet"] = "current",
                            balance: float | None = None, nickname: str = "", last4: str | None = None) -> dict:
@@ -333,7 +354,16 @@ async def add_card(member_key: str, bank: str, network: Literal["visa", "masterc
                     card_type=card_type, label=label, account_id=acc_id)
         s.add(card)
         await s.flush()
-        return {"ok": True, "card_id": str(card.id), "label": label}
+        # Does this match a card the bank is known to issue? If not, hand back the bank's list so the assistant
+        # can check the tier / network with the person (it is still saved).
+        known = (await s.execute(select(CardProduct).where(
+            CardProduct.bank_id == b.id, CardProduct.card_type == card_type))).scalars().all()
+        in_catalog = any((p.network in (None, network)) and (not tier or (p.tier or "") == tier.lower()) for p in known)
+        out = {"ok": True, "card_id": str(card.id), "label": label, "in_catalog": in_catalog}
+        if known and not in_catalog:
+            out["note"] = "Not one of the cards we know this bank issues; confirm the network and tier with the person."
+            out["bank_has"] = [_product_row(p) for p in known][:15]
+        return out
 
 
 @mcp.tool()
@@ -502,12 +532,36 @@ async def find_deals(member_key: str, category: str | None = None, merchant: str
 
 
 @mcp.tool()
+async def offer_deal(member_key: str, deal_id: str) -> dict:
+    """Call this for EVERY deal you recommend to the person (deal_id from find_deals). It starts tracking: when a
+    debit at that merchant shows up in their bank alerts inside the deal's dates, on a card the deal accepts, the
+    saving is detected automatically, moved into their savings and they are congratulated. You don't need to ask
+    whether they used it or call avail_deal for those."""
+    async with member(member_key) as (s, uid):
+        deal = await s.get(Deal, uuid.UUID(deal_id))
+        if not deal or deal.status != "active":
+            raise ToolError("That deal is not active.")
+        offer = await deal_detect.record_offer(s, uid, deal.id)
+        return {"ok": True, "tracking": True, "merchant": deal.merchant_name, "offered_at": offer.offered_at,
+                "note": "Detected automatically from their bank alerts; offers count for up to "
+                        f"{deal_detect.OFFER_TTL_DAYS} days or until the deal ends."}
+
+
+@mcp.tool()
 async def avail_deal(member_key: str, amount_spent: float, deal_id: str | None = None,
                      amount_saved: float | None = None, goal_id: str | None = None) -> dict:
     """The person used a suggested discount. The amount saved is moved into their savings (to goal_id, or split
-    across goals). If amount_saved is omitted it is estimated from the deal terms."""
+    across goals). If amount_saved is omitted it is estimated from the deal terms. Not needed for deals you
+    offered with offer_deal and that were already detected automatically (this then reports it instead)."""
     async with member(member_key) as (s, uid):
         deal = await s.get(Deal, uuid.UUID(deal_id)) if deal_id else None
+        if deal:  # already counted from their bank alert in the last two days? don't save it twice
+            seen = await s.scalar(select(DealRedemption).where(
+                DealRedemption.deal_id == deal.id, DealRedemption.transaction_id.is_not(None),
+                DealRedemption.created_at >= datetime.now(UTC) - timedelta(days=2)).limit(1))
+            if seen:
+                return {"ok": True, "already_counted": True, "amount_saved": float(seen.amount_saved),
+                        "note": "This purchase was already detected from their bank alert and saved."}
         if amount_saved is None:
             if not deal:
                 raise ToolError("Give amount_saved or a deal_id to estimate it.")

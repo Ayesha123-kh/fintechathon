@@ -23,6 +23,27 @@ class Bank(UUIDPk, Base):
     aliases: Mapped[list] = mapped_column(JSONB, default=list)
 
 
+class CardProduct(UUIDPk, Timestamps, Base):
+    """Card products the supported banks issue (global reference catalog; see app/seed/cards.py).
+
+    Keeps card names and tiers consistent across users and lets deals be matched to real products.
+    A user's own Card only stores bank/network/tier/type, never digits.
+    """
+
+    __tablename__ = "card_products"
+    __table_args__ = (UniqueConstraint("bank_id", "name", name="uq_card_products_bank_name"),)
+
+    bank_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("banks.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(160))
+    network: Mapped[str | None] = mapped_column(String(20))  # visa | mastercard | unionpay | paypak | amex; None = not stated
+    tier: Mapped[str | None] = mapped_column(String(30))  # classic | gold | platinum | titanium | signature | infinite | world ...
+    card_type: Mapped[str] = mapped_column(String(10))  # debit | credit
+    is_islamic: Mapped[bool] = mapped_column(Boolean, default=False)
+    confidence: Mapped[str] = mapped_column(String(12), default="bank_site")  # official | bank_site | weak
+    source_url: Mapped[str | None] = mapped_column(Text)
+    verified_on: Mapped[date | None] = mapped_column(Date)
+
+
 class Category(Base):
     __tablename__ = "categories"
 
@@ -112,6 +133,18 @@ class Transaction(UUIDPk, UserOwned, Base):
     balance_after: Mapped[Decimal | None]
     is_income: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DealOffer(UUIDPk, UserOwned, Base):
+    """A deal the assistant told this person about. A later debit at the deal's merchant, inside the deal's
+    window and on an eligible card, counts as the deal being used (see app/services/deal_detect.py)."""
+
+    __tablename__ = "deal_offers"
+
+    deal_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("deals.id", ondelete="CASCADE"), index=True)
+    offered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    status: Mapped[str] = mapped_column(String(12), default="open")  # open | redeemed
+    redeemed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class DealRedemption(UUIDPk, UserOwned, Base):

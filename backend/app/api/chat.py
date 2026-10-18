@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import chat_channel, presence_key, rate_limit, redis
 from app.core.db import scoped_session
-from app.core.deps import Principal, current_principal, own_db, passive_principal
+from app.core.deps import Principal, own_db, passive_user_principal, user_principal
 from app.core.llm import transcribe
 from app.models import ChatMessage, ChatRoom, Notification, UserProfile
 from app.services.omb import GatewayError, ensure_room, send_to_room
@@ -25,13 +25,13 @@ def message_out(m: ChatMessage) -> dict:
 
 
 @router.get("/status")
-async def status(p: Principal = Depends(current_principal)) -> dict:
+async def status(p: Principal = Depends(user_principal)) -> dict:
     room = await ensure_room(p.user_id)
     return {"status": room.status, "advisors": [v.get("label", k) for k, v in (room.bots or {}).items()]}
 
 
 @router.get("/unread")
-async def unread(p: Principal = Depends(current_principal), s: AsyncSession = Depends(own_db)) -> dict:
+async def unread(p: Principal = Depends(user_principal), s: AsyncSession = Depends(own_db)) -> dict:
     """Bot replies and notifications that arrived since the person last opened the chat."""
     profile = await s.get(UserProfile, p.user_id)
     read_at = profile.chat_read_at if profile else None
@@ -42,7 +42,7 @@ async def unread(p: Principal = Depends(current_principal), s: AsyncSession = De
 
 
 @router.post("/read")
-async def mark_read(p: Principal = Depends(current_principal), s: AsyncSession = Depends(own_db)) -> dict:
+async def mark_read(p: Principal = Depends(user_principal), s: AsyncSession = Depends(own_db)) -> dict:
     profile = await s.get(UserProfile, p.user_id)
     if profile:
         profile.chat_read_at = datetime.now(UTC)
@@ -81,12 +81,12 @@ async def _send(user_id: uuid.UUID, text: str) -> dict:
 
 
 @router.post("/messages")
-async def send(body: SendIn, p: Principal = Depends(current_principal)) -> dict:
+async def send(body: SendIn, p: Principal = Depends(user_principal)) -> dict:
     return await _send(p.user_id, body.text.strip())
 
 
 @router.post("/voice")
-async def voice(audio: UploadFile = File(...), p: Principal = Depends(current_principal)) -> dict:
+async def voice(audio: UploadFile = File(...), p: Principal = Depends(user_principal)) -> dict:
     data = await audio.read()
     if len(data) > 15 * 1024 * 1024:
         raise HTTPException(413, "audio_too_large")
@@ -100,7 +100,7 @@ async def voice(audio: UploadFile = File(...), p: Principal = Depends(current_pr
 
 
 @router.get("/stream")
-async def stream(p: Principal = Depends(passive_principal)) -> StreamingResponse:
+async def stream(p: Principal = Depends(passive_user_principal)) -> StreamingResponse:
     """Server-sent events with new / updated chat messages. Also marks the user as online,
     so replies are not duplicated as push notifications while the app is open."""
     user_id = str(p.user_id)
@@ -132,7 +132,7 @@ async def stream(p: Principal = Depends(passive_principal)) -> StreamingResponse
 
 
 @router.post("/reset-room")
-async def reset_room(p: Principal = Depends(current_principal)) -> dict:
+async def reset_room(p: Principal = Depends(user_principal)) -> dict:
     """Retry provisioning after an error."""
     async with scoped_session(p.user_id, "user") as s:
         room = await s.get(ChatRoom, p.user_id)

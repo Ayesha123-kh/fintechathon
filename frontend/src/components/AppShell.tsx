@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Fingerprint, FlaskConical, MessageCircle, LogOut, Monitor, Moon, Shield, Sun, X } from "lucide-react";
+import { Bell, Fingerprint, FlaskConical, MessageCircle, LogOut, Monitor, Moon, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
@@ -22,7 +22,10 @@ export function openSettings(section?: "email") {
 
 type EmailResult = { connected?: boolean; error?: string };
 
-export function AppShell({ children, onChatActivity }: { children: React.ReactNode; onChatActivity?: () => void }) {
+/** `sidebar` (admin only) is shown to the left of the page on laptops; the page itself handles phones. */
+export function AppShell({ children, onChatActivity, sidebar }: {
+  children: React.ReactNode; onChatActivity?: () => void; sidebar?: React.ReactNode;
+}) {
   const { status, user } = useSession();
   const [sheet, setSheet] = useState<"" | "settings">("");
   const [settingsClosing, setSettingsClosing] = useState(false);
@@ -44,7 +47,8 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
     window.addEventListener("bachat:open-settings", open);
     return () => window.removeEventListener("bachat:open-settings", open);
   }, []);
-  const { data: me } = useSWR<{ test_tools?: boolean }>(status === "active" ? "/me" : null, fetcher);
+  const isAdmin = user?.role === "admin"; // admins only have the admin dashboard: no chat, email, push or finances
+  const { data: me } = useSWR<{ test_tools?: boolean }>(status === "active" && !isAdmin ? "/me" : null, fetcher);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -59,7 +63,7 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
       setToast({
         error: true,
         text: msg.startsWith("connect_gmail_first") ? "Connect a Gmail inbox in Settings first."
-          : msg.startsWith("smtp_not_configured") ? "Add SMTP_USERNAME and SMTP_PASSWORD to backend/.env to send test emails."
+          : msg.startsWith("smtp_not_configured") ? "Add SMTP_USERNAME and SMTP_PASSWORD to the root .env to send test emails."
             : msg.startsWith("add_a_bank_first") ? "Add a bank account in chat first." : msg,
       });
     } finally {
@@ -79,8 +83,8 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
     <div className="min-h-dvh pb-10">
       <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/85 backdrop-blur">
         {/* Phones: avatar left, logo centred, chat on the right. Laptops: logo left, actions and avatar right. */}
-        <div className="relative mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
-          <Link href="/dashboard" aria-label="Home" className="max-md:absolute max-md:left-1/2 max-md:-translate-x-1/2">
+        <div className={clsx("relative mx-auto flex h-16 items-center gap-4 px-4", sidebar ? "max-w-[90rem]" : "max-w-6xl")}>
+          <Link href={isAdmin ? "/admin" : "/dashboard"} aria-label="Home" className="max-md:absolute max-md:left-1/2 max-md:-translate-x-1/2">
             <Logo size={34} />
           </Link>
           <div className="ml-auto flex items-center gap-1">
@@ -91,7 +95,7 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
                 <span className="hidden lg:inline">Test bank email</span>
               </button>
             )}
-            <HeaderChatButton />
+            {!isAdmin && <HeaderChatButton />}
           </div>
           {/* Phones: the avatar morphs into a cross while settings is open and closes it on tap. */}
           <button
@@ -113,12 +117,21 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pt-5">{children}</main>
+      {sidebar ? (
+        <div className="mx-auto flex max-w-[90rem] gap-8 px-4 pt-5">
+          <aside className="sticky top-[5.25rem] hidden h-[calc(100dvh-6.5rem)] w-56 shrink-0 overflow-y-auto md:block">{sidebar}</aside>
+          <main className="min-w-0 flex-1">{children}</main>
+        </div>
+      ) : (
+        <main className="mx-auto max-w-6xl px-4 pt-5">{children}</main>
+      )}
 
 
-      <Suspense>
-        <ChatWidget onActivity={onChatActivity} />
-      </Suspense>
+      {!isAdmin && (
+        <Suspense>
+          <ChatWidget onActivity={onChatActivity} />
+        </Suspense>
+      )}
 
       {toast && (
         <div role="status" className={clsx(
@@ -179,6 +192,7 @@ function Sheet({ title, onClose, onClosing, children }: {
 
 function SettingsPanel({ emailResult }: { emailResult?: EmailResult }) {
   const { user, signOut, reload, hasPasskey } = useSession();
+  const isAdmin = user?.role === "admin";
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
   const [pushOn, setPushOn] = useState<boolean | null>(null);
@@ -233,29 +247,26 @@ function SettingsPanel({ emailResult }: { emailResult?: EmailResult }) {
         <p className="font-semibold">{user?.full_name}</p>
         <p className="text-sm text-muted">{user?.email}</p>
       </div>
-      <EmailSettings result={emailResult} />
+      {!isAdmin && <EmailSettings result={emailResult} />}
       {passkeySupported() && (
         <Button variant="outline" className="w-full justify-start" onClick={addPasskey} loading={busy === "passkey"}>
           <Fingerprint className="size-5" aria-hidden />
           {hasPasskey ? "Add fingerprint / face on this device" : "Turn on fingerprint / face sign-in"}
         </Button>
       )}
-      {pushSupported() && (
+      {!isAdmin && pushSupported() && (
         <Button variant="outline" className="w-full justify-start" onClick={togglePush} loading={busy === "push"}>
           <Bell className="size-5" aria-hidden />
           {pushOn ? "Turn off notifications on this device" : "Turn on notifications"}
         </Button>
       )}
       <ThemePicker />
-      {user?.role === "admin" && (
-        <Link href="/admin" className="flex w-full items-center gap-2 rounded-full border border-line px-5 py-2.5 text-[15px] font-semibold hover:bg-hover">
-          <Shield className="size-5" aria-hidden /> Admin dashboard
-        </Link>
+      {!isAdmin && (
+        <p className="text-xs text-muted">
+          Everything else, like your banks, goals, savings rule, language, sadqah reminders or the investment board,
+          is changed by telling your assistant in the chat.
+        </p>
       )}
-      <p className="text-xs text-muted">
-        Everything else, like your banks, goals, savings rule, language, sadqah reminders or the investment board,
-        is changed by telling your assistant in the chat.
-      </p>
       {msg && <p className="rounded-2xl bg-primary/30 px-4 py-3 text-sm">{msg}</p>}
       <Button variant="ghost" className="w-full justify-start text-danger" onClick={signOut}>
         <LogOut className="size-5" aria-hidden /> Sign out

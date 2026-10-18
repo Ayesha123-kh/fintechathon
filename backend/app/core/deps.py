@@ -63,14 +63,25 @@ async def require_admin(p: Principal = Depends(current_principal)) -> Principal:
     return p
 
 
-async def user_db(p: Principal = Depends(current_principal)) -> AsyncIterator[AsyncSession]:
-    """Session where RLS limits every query to the caller's rows (admins see all)."""
-    async with scoped_session(p.user_id, "admin" if p.is_admin else "user") as session:
-        yield session
+def _reject_admin(p: Principal) -> Principal:
+    # Admin accounts only run the admin dashboard; they have no finances, goals or assistant chat.
+    if p.is_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "admin_account")
+    return p
 
 
-async def own_db(p: Principal = Depends(current_principal)) -> AsyncIterator[AsyncSession]:
-    """Session limited to the caller's own rows even for admins (personal screens)."""
+async def user_principal(p: Principal = Depends(current_principal)) -> Principal:
+    """Authenticated regular user; admin accounts are refused."""
+    return _reject_admin(p)
+
+
+async def passive_user_principal(p: Principal = Depends(passive_principal)) -> Principal:
+    """Like passive_principal, for regular users only."""
+    return _reject_admin(p)
+
+
+async def own_db(p: Principal = Depends(user_principal)) -> AsyncIterator[AsyncSession]:
+    """Session limited to the caller's own rows (regular users only)."""
     async with scoped_session(p.user_id, "user") as session:
         yield session
 

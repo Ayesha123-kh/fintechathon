@@ -87,7 +87,7 @@ async def agent_users() -> list[dict]:
         rows = (await s.execute(
             select(ChatRoom, User, UserProfile).join(User, User.id == ChatRoom.user_id)
             .outerjoin(UserProfile, UserProfile.user_id == ChatRoom.user_id)
-            .where(ChatRoom.status == "ready", User.is_active.is_(True))
+            .where(ChatRoom.status == "ready", User.is_active.is_(True), User.role == "user")
         )).all()
         return [{
             "user_id": str(room.user_id), "room_id": room.omb_room_id, "soul_version": room.soul_version,
@@ -99,9 +99,9 @@ async def agent_users() -> list[dict]:
 
 @router.get("/agents/known-users")
 async def known_users() -> list[str]:
-    """Every existing account id; OMB teams for anyone else are orphans the gateway removes."""
+    """Every regular user id; OMB teams for anyone else (deleted users, admins) are orphans the gateway removes."""
     async with system_session() as s:
-        return [str(u) for u in (await s.execute(select(User.id))).scalars()]
+        return [str(u) for u in (await s.execute(select(User.id).where(User.role == "user"))).scalars()]
 
 
 class SoulVersionIn(BaseModel):

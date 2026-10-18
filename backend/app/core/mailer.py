@@ -34,6 +34,24 @@ async def send_email(to: str, subject: str, text: str, html: str | None = None) 
         return False
 
 
+def otp_email(name: str, code: str, minutes: int) -> tuple[str, str]:
+    text = (
+        f"Assalam o Alaikum {name or ''},\n\nYour {settings.app_name} verification code is: {code}\n"
+        f"It expires in {minutes} minutes. If you didn't try to create an account, ignore this email."
+    )
+    html = f"""
+    <div style="font-family:system-ui,sans-serif;background:#EAFFD0;padding:24px">
+      <div style="max-width:480px;margin:auto;background:#fff;border-radius:20px;padding:28px">
+        <h2 style="color:#224F10;margin-top:0">Verify your email</h2>
+        <p style="color:#0D0D0D">Assalam o Alaikum {name or ''}, enter this code to finish creating your account:</p>
+        <p style="font-size:34px;font-weight:700;letter-spacing:10px;color:#224F10;margin:18px 0">{code}</p>
+        <p style="color:#555;font-size:13px">It expires in {minutes} minutes. If you didn't try to create an account,
+        ignore this email.</p>
+      </div>
+    </div>"""
+    return text, html
+
+
 def reset_email(name: str, link: str) -> tuple[str, str]:
     text = (
         f"Assalam o Alaikum {name or ''},\n\nWe received a request to reset your {settings.app_name} password.\n"
