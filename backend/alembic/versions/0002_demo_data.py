@@ -19,15 +19,18 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from alembic import op
 from app.core.config import settings
 from app.core.security import hash_password
 from app.models import (
+    AssetClass,
     Bank,
     BankAccount,
     Card,
+    Category,
     ChatMessage,
     Deal,
     DealRedemption,
@@ -45,6 +48,7 @@ from app.models import (
     UserFollow,
     UserProfile,
 )
+from app.seed import data as seed_data
 from app.services.deals import deal_fingerprint
 from app.services.text import normalize_name
 
@@ -69,6 +73,23 @@ def _system(conn) -> None:
     conn.execute(sa.text("SELECT set_config('app.role', 'system', true)"))
 
 
+def _seed_reference(conn) -> None:
+    """Categories, banks, asset classes and plans normally load at app startup, i.e. after migrations; a fresh database needs them now."""
+    for slug, name, icon, color, is_expense in seed_data.CATEGORIES:
+        conn.execute(insert(Category).values(slug=slug, name=name, icon=icon, color=color, is_expense=is_expense)
+                     .on_conflict_do_nothing(index_elements=["slug"]))
+    for name, short, kind, website, domains, aliases in seed_data.BANKS:
+        conn.execute(insert(Bank).values(name=name, short_name=short, kind=kind, website=website,
+                                         email_domains=domains, aliases=aliases)
+                     .on_conflict_do_nothing(index_elements=["name"]))
+    for slug, name, desc in seed_data.ASSET_CLASSES:
+        conn.execute(insert(AssetClass).values(slug=slug, name=name, description=desc)
+                     .on_conflict_do_nothing(index_elements=["slug"]))
+    for code, name, price, features in seed_data.PLANS:
+        conn.execute(insert(Plan).values(code=code, name=name, price_monthly=price, features=features)
+                     .on_conflict_do_nothing(index_elements=["code"]))
+
+
 def _at(day: date, hour: int, minute: int = 0) -> datetime:
     return datetime(day.year, day.month, day.day, hour, minute, tzinfo=UTC) - timedelta(hours=5)  # PKT -> UTC
 
@@ -78,6 +99,7 @@ def upgrade() -> None:
         return
     conn = op.get_bind()
     _system(conn)
+    _seed_reference(conn)
     s = Session(bind=conn)
     rnd = random.Random(42)
     today = date.today()
@@ -91,8 +113,10 @@ def upgrade() -> None:
     s.add_all([user, admin])
     s.flush()
     uid = user.id
-    s.add(UserProfile(user_id=admin.id))
-    s.add(UserProfile(
+    # Core inserts on purpose: the ORM would also write columns that later migrations add (e.g. chat_read_at).
+    profiles = UserProfile.__table__
+    s.execute(sa.insert(profiles).values(user_id=admin.id))
+    s.execute(sa.insert(profiles).values(
         user_id=uid, monthly_income=150000, salary_day=1, city="Karachi", language="en",
         savings_mode="percent", savings_value=25, goal_split_mode="deadline",
         sadqah_opt_in=True, sadqah_mode="fixed", sadqah_value=2000, sadqah_frequency="friday",
