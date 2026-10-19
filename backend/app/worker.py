@@ -53,6 +53,7 @@ def build_scheduler() -> AsyncIOScheduler:
 
 
 async def main() -> None:
+    settings.check_production()
     await load_reference_data()
     scheduler = build_scheduler()
     scheduler.start()

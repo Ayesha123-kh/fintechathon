@@ -82,9 +82,30 @@ class Settings(BaseSettings):
     demo_user_email: str = "demo@bachat.pk"
 
     @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
+
+    @property
     def test_tools_enabled(self) -> bool:
         """Simulated bank alert emails and similar helpers; never in production."""
-        return self.environment.lower() != "production"
+        return not self.is_production
+
+    def unsafe_for_production(self) -> list[str]:
+        """Settings still at an example value or missing. The API and the worker refuse to start in production while
+        any are listed (a known JWT secret would let anyone sign tokens for any account)."""
+        problems = [name.upper() for name in ("jwt_secret", "internal_api_key", "mcp_user_token", "mcp_market_token")
+                    if len(getattr(self, name)) < 24 or getattr(self, name).startswith("change-me")]
+        if not self.encryption_key:
+            problems.append("ENCRYPTION_KEY")
+        if self.admin_email and (len(self.admin_password) < 12 or self.admin_password.startswith("change-me")):
+            problems.append("ADMIN_PASSWORD")
+        if not self.cookie_secure:
+            problems.append("COOKIE_SECURE")
+        return problems
+
+    def check_production(self) -> None:
+        if self.is_production and (problems := self.unsafe_for_production()):
+            raise RuntimeError(f"Refusing to start in production; set real values for: {', '.join(problems)}")
 
     run_scheduler: bool = False
 

@@ -9,6 +9,7 @@ from app.api import admin, auth, chat, dev, email, finance, internal, push
 from app.core.cache import rate_limit, redis
 from app.core.config import settings
 from app.core.deps import _token_from, client_ip
+from app.core.middleware import BodyLimit, SecurityHeaders
 from app.core.security import decode_access_token
 from app.mcp import market_server, user_server
 from app.mcp.common import BearerGuard
@@ -22,6 +23,7 @@ market_mcp_app = market_server.build_app()
 
 @contextlib.asynccontextmanager
 async def lifespan(_: FastAPI):
+    settings.check_production()
     await load_reference_data()
     await ensure_admin()
     async with contextlib.AsyncExitStack() as stack:
@@ -30,7 +32,10 @@ async def lifespan(_: FastAPI):
         yield
 
 
-app = FastAPI(title=f"{settings.app_name} API", lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
+# The interactive docs and schema map every endpoint, so they're only served outside production.
+app = FastAPI(title=f"{settings.app_name} API", lifespan=lifespan, redoc_url=None,
+              docs_url=None if settings.is_production else "/api/docs",
+              openapi_url=None if settings.is_production else "/api/openapi.json")
 app.add_middleware(
     CORSMiddleware, allow_origins=settings.cors_origins, allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
@@ -65,6 +70,10 @@ async def global_rate_limit(request: Request, call_next):
             return JSONResponse({"detail": "slow_down"}, status_code=429, headers={"Retry-After": str(max(retry, 1))})
     return await call_next(request)
 
+
+# Outermost: oversized bodies are refused before anything else runs, and every response gets the security headers.
+app.add_middleware(BodyLimit)
+app.add_middleware(SecurityHeaders)
 
 for r in (auth.router, finance.router, chat.router, email.router, push.router, admin.router, internal.router, dev.router):
     app.include_router(r, prefix="/api")

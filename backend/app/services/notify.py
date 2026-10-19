@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 from datetime import UTC, datetime
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from pywebpush import WebPushException, webpush
@@ -17,8 +18,27 @@ from app.models import ChatMessage, Notification, PushSubscription
 log = logging.getLogger(__name__)
 
 
+# Browsers' push services. The server POSTs to whatever endpoint a browser registers, so anything else (an internal
+# address, say) is refused: otherwise a subscription could aim the server's requests at the private network.
+PUSH_HOSTS = {"fcm.googleapis.com", "android.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"}
+PUSH_HOST_SUFFIXES = (".push.apple.com", ".notify.windows.com", ".push.services.mozilla.com")
+
+
+def push_endpoint_ok(url: str) -> bool:
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return False
+    host = (parts.hostname or "").lower()
+    return (parts.scheme == "https" and port in (None, 443) and not parts.username and not parts.password
+            and (host in PUSH_HOSTS or host.endswith(PUSH_HOST_SUFFIXES)))
+
+
 def _send_one(sub: PushSubscription, payload: str) -> str:
     """Returns 'ok', 'gone' or 'error'."""
+    if not push_endpoint_ok(sub.endpoint):
+        return "gone"  # stored before endpoints were checked: drop it
     try:
         webpush(
             subscription_info={"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh, "auth": sub.auth}},

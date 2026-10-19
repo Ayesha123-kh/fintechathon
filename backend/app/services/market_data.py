@@ -1,6 +1,7 @@
 """Free / open market data sources used by the shared agent teams (via MCP)."""
 
 import asyncio
+import ipaddress
 import json
 import logging
 import re
@@ -150,18 +151,71 @@ async def web_search(query: str, max_results: int = 8, news: bool = False) -> li
              "date": r.get("date"), "source": r.get("source")} for r in results]
 
 
-async def fetch_url(url: str, max_chars: int = 12000) -> dict:
-    if not re.match(r"^https?://", url):
-        return {"error": "only http(s) URLs"}
+FETCH_MAX_BYTES = 3 * 1024 * 1024
+FETCH_MAX_REDIRECTS = 5
+
+
+async def _public_address(host: str) -> bool:
+    """True only when every address the name resolves to is on the public internet."""
     try:
-        async with httpx.AsyncClient(timeout=25, headers=UA, follow_redirects=True) as c:
-            r = await c.get(url)
+        infos = await asyncio.get_running_loop().getaddrinfo(host, None)
+    except OSError:
+        return False
+    if not infos:
+        return False
+    for *_, sockaddr in infos:
+        ip = ipaddress.ip_address(str(sockaddr[0]).split("%")[0])
+        if ip.version == 6 and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        if not ip.is_global or ip.is_multicast:
+            return False
+    return True
+
+
+async def _refusal(url: httpx.URL) -> str | None:
+    """Why the bots may not fetch this URL, or None when they may."""
+    if url.scheme not in ("http", "https"):
+        return "only http(s) URLs"
+    if url.port not in (None, 80, 443):
+        return "only the standard web ports"
+    if not url.host or not await _public_address(url.host):
+        return "that address is on a private or internal network"
+    return None
+
+
+async def fetch_url(url: str, max_chars: int = 12000) -> dict:
+    """Read a public web page for the deal and research bots. They read untrusted pages that could try to steer them
+    at internal services, so only public addresses on the standard web ports are fetched, every redirect is checked
+    again, and at most FETCH_MAX_BYTES are read. (A name that resolves differently between the check and the
+    request could still slip through; that needs control of a domain's DNS.)"""
+    try:
+        target = httpx.URL(url)
+    except httpx.InvalidURL:
+        return {"error": "invalid URL"}
+    try:
+        async with httpx.AsyncClient(timeout=25, headers=UA, follow_redirects=False) as c:
+            for _ in range(FETCH_MAX_REDIRECTS + 1):
+                if reason := await _refusal(target):
+                    return {"url": str(target), "error": reason}
+                async with c.stream("GET", target) as r:
+                    if r.is_redirect and "location" in r.headers:
+                        target = target.join(r.headers["location"])
+                        continue
+                    body = bytearray()
+                    async for chunk in r.aiter_bytes():
+                        body += chunk
+                        if len(body) > FETCH_MAX_BYTES:
+                            break
+                    status, ctype, final, encoding = r.status_code, r.headers.get("content-type", ""), r.url, r.encoding
+                break
+            else:
+                return {"url": str(target), "error": "too many redirects"}
     except httpx.HTTPError as exc:
         return {"url": url, "error": str(exc)}
-    ctype = r.headers.get("content-type", "")
+    html = bytes(body[:FETCH_MAX_BYTES]).decode(encoding or "utf-8", errors="replace")
     if "json" in ctype:
-        return {"url": str(r.url), "status": r.status_code, "text": r.text[:max_chars]}
-    soup = BeautifulSoup(r.text, "lxml")
+        return {"url": str(final), "status": status, "text": html[:max_chars]}
+    soup = BeautifulSoup(html, "lxml")
     for tag in soup(["script", "style", "noscript", "svg", "header", "footer", "nav", "form"]):
         tag.decompose()
     title = soup.title.get_text(strip=True) if soup.title else ""
@@ -171,6 +225,6 @@ async def fetch_url(url: str, max_chars: int = 12000) -> dict:
         label = a.get_text(" ", strip=True)
         href = a["href"]
         if label and re.search(r"deal|discount|offer|promo|sale|card|instagram|facebook|tiktok", label + href, re.IGNORECASE):
-            links.append({"text": label[:80], "href": str(httpx.URL(str(r.url)).join(href))})
-    return {"url": str(r.url), "status": r.status_code, "title": title, "text": text[:max_chars],
+            links.append({"text": label[:80], "href": str(final.join(href))})
+    return {"url": str(final), "status": status, "title": title, "text": text[:max_chars],
             "relevant_links": links[:40]}
