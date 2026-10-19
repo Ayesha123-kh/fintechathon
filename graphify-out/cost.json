@@ -19,6 +19,13 @@
       "output_tokens": 0,
       "files": 26,
       "note": "update: 26 changed files; subagent tokens in+out combined"
+    },
+    {
+      "date": "2026-10-19T20:18:06.057314+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 52,
+      "note": "update: 52 changed files; doc extraction done inline by the host agent"
     }
   ],
   "total_input_tokens": 321238,
