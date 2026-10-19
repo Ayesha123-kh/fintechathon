@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import clock, limits
+from app.core.cache import enforce
 from app.core.config import settings
 from app.core.deps import Principal, own_db, user_principal
 from app.models import (
@@ -60,6 +61,7 @@ def _avatar_version(profile: UserProfile | None) -> int | None:
 async def upload_avatar(image: UploadFile = File(...), p: Principal = Depends(user_principal),
                         s: AsyncSession = Depends(own_db)) -> dict:
     """Set the optional profile photo. The app crops and shrinks it in the browser before uploading."""
+    await enforce(f"avatar:{p.user_id}", 10, 3600)
     data = await image.read(limits.AVATAR_MAX_BYTES + 1)
     if len(data) > limits.AVATAR_MAX_BYTES:
         raise HTTPException(413, "avatar_too_large")
@@ -86,6 +88,7 @@ async def get_avatar(p: Principal = Depends(user_principal), s: AsyncSession = D
 
 @router.delete("/me/avatar")
 async def delete_avatar(p: Principal = Depends(user_principal), s: AsyncSession = Depends(own_db)) -> dict:
+    await enforce(f"avatar:{p.user_id}", 10, 3600)
     profile = await s.get(UserProfile, p.user_id)
     if profile:
         profile.avatar, profile.avatar_type, profile.avatar_updated_at = None, None, None
@@ -100,6 +103,7 @@ class MePatch(BaseModel):
 @router.patch("/me")
 async def update_me(body: MePatch, p: Principal = Depends(user_principal),
                     s: AsyncSession = Depends(own_db)) -> dict:
+    await enforce(f"me-update:{p.user_id}", 10, 3600)  # each change re-applies the person's assistant team
     user = await s.get(User, p.user_id)
     profile = await s.get(UserProfile, p.user_id)
     if body.full_name:

@@ -6,8 +6,9 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import enforce
 from app.core.config import settings
-from app.core.deps import Principal, own_db, user_principal
+from app.core.deps import Principal, client_ip, own_db, user_principal
 from app.models import EmailConnection, IngestedEmail
 from app.services import gmail
 
@@ -28,6 +29,7 @@ async def connections(s: AsyncSession = Depends(own_db)) -> dict:
 
 @router.post("/google/start")
 async def google_start(p: Principal = Depends(user_principal)) -> dict:
+    await enforce(f"gmail-start:{p.user_id}", 10, 3600)
     if not settings.google_client_id:
         raise HTTPException(503, "gmail_not_configured")
     return {"url": gmail.auth_url(p.user_id)}
@@ -36,6 +38,7 @@ async def google_start(p: Principal = Depends(user_principal)) -> dict:
 @router.get("/google/callback")
 async def google_callback(request: Request, code: str | None = None, state: str | None = None,
                           error: str | None = None) -> RedirectResponse:
+    await enforce(f"gmail-callback:{client_ip(request)}", 20, 600)
     target = f"{settings.frontend_url}/dashboard?settings=email"
     if error or not code or not state:
         return RedirectResponse(f"{target}&error={error or 'cancelled'}")
@@ -52,6 +55,7 @@ async def google_callback(request: Request, code: str | None = None, state: str 
 
 @router.post("/connections/{conn_id}/sync")
 async def sync_now(conn_id: uuid.UUID, p: Principal = Depends(user_principal)) -> dict:
+    await enforce(f"gmail-sync:{p.user_id}", 6, 600)  # each sync calls the Gmail API
     created = await gmail.sync_connection(conn_id, p.user_id)
     return {"ok": True, "new_transactions": created}
 

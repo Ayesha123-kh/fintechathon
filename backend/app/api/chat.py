@@ -10,7 +10,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import limits
-from app.core.cache import chat_channel, presence_key, rate_limit, redis
+from app.core.cache import chat_channel, enforce, presence_key, rate_limit, redis
 from app.core.db import scoped_session
 from app.core.deps import Principal, own_db, passive_user_principal, user_principal
 from app.core.llm import transcribe
@@ -29,6 +29,7 @@ def message_out(m: ChatMessage) -> dict:
 
 @router.get("/status")
 async def status(p: Principal = Depends(user_principal)) -> dict:
+    await enforce(f"chat-status:{p.user_id}", 60, 60)  # may (re)provision the assistant
     room = await ensure_room(p.user_id)
     return {"status": room.status, "advisors": [v.get("label", k) for k, v in (room.bots or {}).items()]}
 
@@ -93,6 +94,8 @@ async def send(body: SendIn, p: Principal = Depends(user_principal)) -> dict:
 @router.post("/transcribe")
 async def transcribe_voice(audio: UploadFile = File(...), p: Principal = Depends(user_principal)) -> dict:
     """Speech to text only: the app puts the text in the message box for the person to edit and send."""
+    await enforce(f"stt:{p.user_id}", 10, 60)  # each note costs a speech-to-text run
+    await enforce(f"stt-day:{p.user_id}", 100, 86400)
     data = await audio.read(limits.VOICE_MAX_BYTES + 1)
     if len(data) > limits.VOICE_MAX_BYTES:
         raise HTTPException(413, "audio_too_long")
@@ -150,6 +153,7 @@ async def stream(p: Principal = Depends(passive_user_principal)) -> StreamingRes
 @router.post("/reset-room")
 async def reset_room(p: Principal = Depends(user_principal)) -> dict:
     """Retry provisioning after an error."""
+    await enforce(f"reset-room:{p.user_id}", 5, 600)
     async with scoped_session(p.user_id, "user") as s:
         room = await s.get(ChatRoom, p.user_id)
         if room and room.status == "error":

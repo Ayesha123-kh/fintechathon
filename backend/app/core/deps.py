@@ -24,6 +24,16 @@ class Principal:
         return self.role == "admin"
 
 
+def client_ip(request: Request) -> str:
+    """The caller's IP address for rate limits, taken from the right of X-Forwarded-For (see trusted_proxy_hops).
+    Never the left-most entry: a client can send its own X-Forwarded-For, and proxies append to it."""
+    forwarded = [h.strip() for h in request.headers.get("x-forwarded-for", "").split(",") if h.strip()]
+    hops = settings.trusted_proxy_hops
+    if hops > 0 and len(forwarded) >= hops:
+        return forwarded[-hops]
+    return request.client.host if request.client else ""
+
+
 def _token_from(request: Request) -> str | None:
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):

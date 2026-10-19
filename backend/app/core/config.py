@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     refresh_token_days: int = 30
     idle_lock_minutes: int = 5
     cookie_secure: bool = False
+    # How many proxies in front of the app append to X-Forwarded-For. The caller's IP (used for rate limits) is that
+    # many entries from the right; entries further left were sent by the caller and can be forged. On Railway the
+    # edge appends the client's address, so 1. (Next.js itself only fills the header in when it is missing, so in the
+    # local stack a client can still choose it; the per-account and per-person limits don't depend on it.)
+    trusted_proxy_hops: int = 1
     # Fernet key (urlsafe base64, 32 bytes) used to encrypt OAuth tokens at rest.
     encryption_key: str = ""
 

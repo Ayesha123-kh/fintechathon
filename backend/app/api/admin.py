@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import enforce
 from app.core.deps import Principal, admin_db, require_admin
 from app.core.security import revoke_all_sessions
 from app.models import (
@@ -131,6 +132,7 @@ async def agents(s: AsyncSession = Depends(admin_db)) -> dict:
 
 @router.post("/agents/sync")
 async def agents_sync(actor: Principal = Depends(require_admin), s: AsyncSession = Depends(admin_db)) -> dict:
+    await enforce(f"agents-sync:{actor.user_id}", 5, 600)  # a full re-apply of every team
     await audit(s, actor, "agents.sync", "")
     try:
         return await resync_agents()

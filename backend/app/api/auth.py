@@ -24,11 +24,11 @@ from webauthn.helpers.structs import (
     UserVerificationRequirement,
 )
 
-from app.core.cache import rate_limit, redis
+from app.core.cache import enforce, over_limit, rate_limit, redis
 from app.core.config import settings
 from app.core.crypto import sha256
 from app.core.db import scoped_session, system_session
-from app.core.deps import ACCESS_COOKIE, REFRESH_COOKIE, Principal, current_principal
+from app.core.deps import ACCESS_COOKIE, REFRESH_COOKIE, Principal, client_ip, current_principal
 from app.core.mailer import otp_email, reset_email, send_email
 from app.core.security import (
     create_access_token,
@@ -81,10 +81,6 @@ class UnlockIn(BaseModel):
     password: str = Field(max_length=128)
 
 
-def _client_ip(request: Request) -> str:
-    return (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "")).split(",")[0]
-
-
 def _set_cookies(response: Response, access: str, refresh: str | None) -> None:
     common = {"httponly": True, "secure": settings.cookie_secure, "samesite": "lax"}
     response.set_cookie(ACCESS_COOKIE, access, max_age=settings.access_token_minutes * 60, path="/", **common)
@@ -114,6 +110,7 @@ async def _login(response: Response, user: User) -> dict:
 OTP_TTL_SECONDS = 600
 OTP_RESEND_SECONDS = 60
 OTP_MAX_ATTEMPTS = 5
+SIGNIN_FAILURES_PER_HOUR = 20  # wrong passwords for one account, from any address
 
 
 def _pending_key(email: str) -> str:
@@ -141,9 +138,9 @@ def _pending_out(email: str) -> dict:
 @router.post("/signup")
 async def signup(body: SignupIn, request: Request) -> dict:
     """Step 1: validate, park the sign-up in Redis and email a 6-digit code."""
-    if not await rate_limit(f"signup:{_client_ip(request)}", 10, 3600):
-        raise HTTPException(429, "too_many_attempts")
     email = body.email.lower()
+    await enforce(f"signup:{client_ip(request)}", 10, 3600)
+    await enforce(f"signup-email:{email}", 5, 3600)  # one inbox can't be flooded with codes from many addresses
     async with system_session() as s:
         if await s.scalar(select(User.id).where(User.email == email)):
             raise HTTPException(409, "email_taken")
@@ -157,9 +154,8 @@ async def signup(body: SignupIn, request: Request) -> dict:
 @router.post("/signup/resend")
 async def signup_resend(body: SignupResendIn, request: Request) -> dict:
     email = body.email.lower()
-    if not await rate_limit(f"signup-resend:{email}", 5, 3600) or not await rate_limit(
-            f"signup-resend-ip:{_client_ip(request)}", 20, 3600):
-        raise HTTPException(429, "too_many_attempts")
+    await enforce(f"signup-resend:{email}", 5, 3600)
+    await enforce(f"signup-resend-ip:{client_ip(request)}", 20, 3600)
     pending = await redis.hgetall(_pending_key(email))
     if not pending.get("name"):
         raise HTTPException(400, "signup_expired")
@@ -173,8 +169,7 @@ async def signup_resend(body: SignupResendIn, request: Request) -> dict:
 async def signup_verify(body: SignupVerifyIn, request: Request, response: Response) -> dict:
     """Step 2: the right code creates the account and signs the person in."""
     email = body.email.lower()
-    if not await rate_limit(f"signup-verify-ip:{_client_ip(request)}", 30, 900):
-        raise HTTPException(429, "too_many_attempts")
+    await enforce(f"signup-verify-ip:{client_ip(request)}", 30, 900)
     key = _pending_key(email)
     pending = await redis.hgetall(key)
     if not pending.get("name") or not pending.get("code_hash"):
@@ -205,11 +200,14 @@ async def signup_verify(body: SignupVerifyIn, request: Request, response: Respon
 @router.post("/signin")
 async def signin(body: SigninIn, request: Request, response: Response) -> dict:
     email = body.email.lower()
-    if not await rate_limit(f"signin:{_client_ip(request)}:{email}", 8, 900):
-        raise HTTPException(429, "too_many_attempts")
+    await enforce(f"signin:{client_ip(request)}:{email}", 8, 900)
+    # Wrong passwords for one account are also capped across all addresses, against guessing from many IPs.
+    if await over_limit(f"signin-fail:{email}", SIGNIN_FAILURES_PER_HOUR):
+        raise HTTPException(429, "too_many_attempts", headers={"Retry-After": "900"})
     async with system_session() as s:
         user = await s.scalar(select(User).where(User.email == email))
         if not user or not verify_password(body.password, user.password_hash):
+            await rate_limit(f"signin-fail:{email}", SIGNIN_FAILURES_PER_HOUR, 3600)
             raise HTTPException(401, "invalid_credentials")
         if not user.is_active:
             raise HTTPException(403, "account_disabled")
@@ -271,12 +269,12 @@ async def signout(request: Request, response: Response) -> dict:
 
 @router.post("/forgot")
 async def forgot(body: ForgotIn, request: Request) -> dict:
-    if not await rate_limit(f"forgot:{_client_ip(request)}", 5, 3600):
-        raise HTTPException(429, "too_many_attempts")
+    await enforce(f"forgot:{client_ip(request)}", 5, 3600)
     email = body.email.lower()
     async with system_session() as s:
         user = await s.scalar(select(User).where(User.email == email, User.is_active.is_(True)))
-    if user:
+    # At most 3 reset emails an hour per account; past that nothing is sent, with the same answer (no enumeration).
+    if user and await rate_limit(f"forgot-email:{email}", 3, 3600):
         token = secrets.token_urlsafe(32)
         await redis.set(f"pwreset:{sha256(token)}", str(user.id), ex=1800)
         link = f"{settings.frontend_url}/forgot-password?token={token}"
@@ -287,7 +285,8 @@ async def forgot(body: ForgotIn, request: Request) -> dict:
 
 
 @router.post("/reset")
-async def reset(body: ResetIn) -> dict:
+async def reset(body: ResetIn, request: Request) -> dict:
+    await enforce(f"reset:{client_ip(request)}", 10, 3600)
     key = f"pwreset:{sha256(body.token)}"
     uid = await redis.getdel(key)
     if not uid:
@@ -327,6 +326,7 @@ def _origins() -> list[str]:
 
 @router.post("/webauthn/register/options")
 async def passkey_register_options(p: Principal = Depends(current_principal)) -> Response:
+    await enforce(f"passkey-register:{p.user_id}", 10, 3600)
     async with scoped_session(p.user_id, "user") as s:
         user = await s.get(User, p.user_id)
         existing = (await s.execute(select(WebAuthnCredential.credential_id))).scalars().all()
@@ -348,6 +348,7 @@ class PasskeyVerifyIn(BaseModel):
 
 @router.post("/webauthn/register/verify")
 async def passkey_register_verify(body: PasskeyVerifyIn, p: Principal = Depends(current_principal)) -> dict:
+    await enforce(f"passkey-register-verify:{p.user_id}", 10, 3600)
     challenge = await redis.getdel(f"wa:reg:{p.user_id}")
     if not challenge:
         raise HTTPException(400, "challenge_expired")
@@ -374,6 +375,7 @@ class PasskeyLoginOptionsIn(BaseModel):
 
 @router.post("/webauthn/options")
 async def passkey_auth_options(body: PasskeyLoginOptionsIn, request: Request) -> Response:
+    await enforce(f"passkey-options:{client_ip(request)}", 30, 600)  # unauthenticated, and each stores a challenge
     allow: list[PublicKeyCredentialDescriptor] = []
     user_id = None
     if body.purpose == "unlock":
@@ -403,6 +405,7 @@ class PasskeyAuthIn(BaseModel):
 
 @router.post("/webauthn/verify")
 async def passkey_auth_verify(body: PasskeyAuthIn, request: Request, response: Response) -> dict:
+    await enforce(f"passkey-verify:{client_ip(request)}", 30, 600)
     meta = await redis.getdel(f"wa:auth:{body.challenge}")
     if not meta:
         raise HTTPException(400, "challenge_expired")
