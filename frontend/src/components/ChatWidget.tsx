@@ -1,14 +1,23 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Loader2, MessageCircle, Mic, Send, Square, X } from "lucide-react";
+import { Bell, Loader2, Mail, MessageCircle, Mic, Send, ShieldCheck, Square, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import useSWR from "swr";
 import { DropTail } from "./DropTail";
-import { api, errorText } from "@/lib/api";
+import { api, errorText, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
 type Msg = { id: string; role: "user" | "bot" | "system"; sender: string; text: string; kind?: string; final: boolean; created_at: string | null };
+// Live progress of the assistant's turn: what it is thinking and which tool it is using. Never stored.
+type Activity = { state: "thinking" | "tool" | "writing" | "idle"; thinking: string; tool: string | null; sender: string };
+
+/** "fin_user_list_transactions" -> "List transactions" */
+function toolLabel(name: string) {
+  const words = name.replace(/^(fin_user|fin_market|agents)_/, "").replace(/_/g, " ").trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : "Working";
+}
 
 const SUGGESTIONS_NEW = ["Let's set up my savings", "I want to save for a car", "Which banks do you support?"];
 const SUGGESTIONS = ["How much did I spend this week?", "Any deals for my cards today?", "I got a salary increment", "Am I on track for my goals?"];
@@ -22,12 +31,32 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [waiting, setWaiting] = useState(false);
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [showThinking, setShowThinking] = useState(false);
+  // Bumped on every sign of life from the assistant; the "taking longer" notice only fires after real silence.
+  const [lastSign, setLastSign] = useState(0);
   const [status, setStatus] = useState<string>("pending");
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
   const [unread, setUnread] = useState(0);
   // Latest message that arrived while the chat was closed, shown as a bubble next to the chat button.
   const [preview, setPreview] = useState<Msg | null>(null);
+  // Onboarding starts only after an inbox is connected (unless Gmail isn't configured on the server).
+  const { data: email, mutate: refreshEmail } = useSWR<{ configured: boolean; connections: unknown[] }>(
+    user && user.role !== "admin" && !user.onboarding_completed ? "/email/connections" : null, fetcher);
+  const needsEmail = !!email?.configured && email.connections.length === 0;
+  const [connecting, setConnecting] = useState(false);
+  const connectGmail = async () => {
+    setConnecting(true);
+    setError("");
+    try {
+      const { url } = await api<{ url: string }>("/email/google/start", { method: "POST" });
+      window.location.href = url;
+    } catch (e) {
+      setError(errorText(e));
+      setConnecting(false);
+    }
+  };
 
   // On phones the chat button lives in the top bar (AppShell): it opens the chat and shows the unread count.
   useEffect(() => {
@@ -102,7 +131,15 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     const es = new EventSource("/api/chat/stream", { withCredentials: true });
     es.onmessage = (ev) => {
       const data = JSON.parse(ev.data);
+      if (data.type === "activity") {
+        const a: Activity = data.activity;
+        setLastSign(Date.now());
+        setActivity(a.state === "idle" ? null : a);
+        if (a.state !== "idle") setWaiting(true); // a turn is running: no parallel questions
+        return;
+      }
       if (data.type !== "message") return;
+      setLastSign(Date.now());
       const msg: Msg = data.message;
       setMessages((prev) => {
         const i = prev.findIndex((p) => p.id === msg.id);
@@ -114,7 +151,11 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
         return [...prev, msg];
       });
       if (msg.role === "bot" || msg.role === "system") {
-        setWaiting(false);
+        // Keep the input locked until the reply is complete, so a second question can't run in parallel.
+        if (msg.final || msg.role === "system") {
+          setWaiting(false);
+          setActivity(null);
+        }
         if (!openRef.current && msg.final) {
           setUnread((u) => u + 1);
           setPreview(msg);
@@ -165,6 +206,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   }, [open]);
 
   const jumped = useRef(false);
+  const step = `${activity?.state ?? ""}:${activity?.tool ?? ""}:${showThinking}`; // keep the live step in view
   useEffect(() => {
     if (!open) {
       jumped.current = false;
@@ -177,21 +219,23 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     }
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: jumped.current ? "smooth" : "auto" });
     if (messages.length) jumped.current = true;
-  }, [messages, waiting, open, readAt]);
+  }, [messages, waiting, open, readAt, step]);
 
-  // If no reply (and no error notice) arrives, don't leave the person staring at "Thinking…".
+  // Long agent turns keep sending thinking / tool activity, which keeps this waiting. Only if the assistant goes
+  // completely silent do we stop waiting, so the person isn't left staring at "Thinking…".
   useEffect(() => {
     if (!waiting) return;
     const t = setTimeout(() => {
       setWaiting(false);
+      setActivity(null);
       setError("Your assistant is taking longer than usual. You'll get a notification when it replies.");
-    }, 90_000);
+    }, 120_000);
     return () => clearTimeout(t);
-  }, [waiting]);
+  }, [waiting, lastSign]);
 
   const send = useCallback(async (value: string) => {
     const t = value.trim();
-    if (!t) return;
+    if (!t || waiting) return;
     setText("");
     setError("");
     setWaiting(true);
@@ -199,10 +243,11 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
       await api("/chat/messages", { method: "POST", json: { text: t } });
     } catch (e) {
       setWaiting(false);
-      setError(errorText(e));
+      if (errorText(e).startsWith("connect_gmail_first")) refreshEmail();
+      else setError(errorText(e));
       setText(t);
     }
-  }, []);
+  }, [waiting, refreshEmail]);
 
   const toggleRecording = async () => {
     if (recording) {
@@ -318,13 +363,50 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                   </Fragment>
                 );
               })}
-              {waiting && (
-                <div className="flex items-center gap-2 px-2 text-sm text-muted">
-                  <Loader2 className="size-4 animate-spin" aria-hidden /> Thinking…
+              {waiting && (activity ? activity.state !== "writing" : !(messages.at(-1)?.role === "bot" && !messages.at(-1)?.final)) && (
+                <div className="space-y-1.5 px-2 text-sm text-muted" aria-live="polite">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                    <span className="min-w-0 truncate">
+                      {activity?.sender && <span className="font-semibold">{activity.sender} · </span>}
+                      {activity?.state === "tool" && activity.tool ? `${toolLabel(activity.tool)}…` : "Thinking…"}
+                    </span>
+                    {activity?.thinking && (
+                      <button onClick={() => setShowThinking((v) => !v)} aria-expanded={showThinking}
+                        className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium hover:bg-hover">
+                        {showThinking ? "Hide" : "Show"} thinking
+                      </button>
+                    )}
+                  </div>
+                  {activity?.thinking && (
+                    <p className={clsx("border-l-2 border-line pl-3 text-xs whitespace-pre-wrap italic",
+                      showThinking ? "max-h-48 overflow-y-auto" : "line-clamp-2")}>
+                      {showThinking ? activity.thinking : activity.thinking.slice(-240)}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
 
+            {needsEmail ? (
+              <div className="space-y-3 border-t border-line px-4 py-4">
+                <p className="text-sm text-ink-2">
+                  First, connect the Gmail inbox where your bank alerts arrive. Your assistant then plans with your
+                  real spending instead of guesses.
+                </p>
+                <div className="flex items-start gap-2 text-xs text-muted">
+                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-forest dark:text-primary" aria-hidden />
+                  <p>Read-only. Only alert emails from your banks are read. Disconnect anytime in Settings.</p>
+                </div>
+                {error && <p className="text-xs text-danger" role="alert">{error}</p>}
+                <button onClick={connectGmail} disabled={connecting}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary font-semibold text-primary-ink disabled:opacity-60">
+                  {connecting ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Mail className="size-5" aria-hidden />}
+                  Connect Gmail
+                </button>
+              </div>
+            ) : (
+            <>
             {messages.length < 3 && !waiting && (
               <div className="flex gap-2 overflow-x-auto overscroll-x-contain px-3 pt-2">
                 {suggestions.map((s) => (
@@ -353,21 +435,23 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                   }
                 }}
                 rows={1}
-                placeholder={recording ? "Listening… tap stop when done" : "Message your assistant"}
+                disabled={waiting}
+                placeholder={recording ? "Listening… tap stop when done" : waiting ? "Waiting for a reply…" : "Message your assistant"}
                 aria-label="Message"
-                className="max-h-32 min-h-11 flex-1 resize-none rounded-3xl border border-line bg-surface-2 px-4 py-2.5 text-[15px] outline-none focus:border-forest"
+                className="max-h-32 min-h-11 flex-1 resize-none rounded-3xl border border-line bg-surface-2 px-4 py-2.5 text-[15px] outline-none focus:border-forest disabled:opacity-60"
               />
               {text.trim() ? (
-                <button type="submit" aria-label="Send" className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-ink">
+                <button type="submit" aria-label="Send" disabled={waiting} className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-ink disabled:opacity-60">
                   <Send className="size-5" />
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={toggleRecording}
+                  disabled={waiting && !recording}
                   aria-label={recording ? "Stop recording" : "Record a voice message"}
                   className={clsx(
-                    "grid size-11 shrink-0 place-items-center rounded-full",
+                    "grid size-11 shrink-0 place-items-center rounded-full disabled:opacity-60",
                     recording ? "animate-pulse bg-danger text-white" : "bg-forest text-forest-ink",
                   )}
                 >
@@ -375,6 +459,8 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                 </button>
               )}
             </form>
+            </>
+            )}
           </section>
           </div>
         </div>

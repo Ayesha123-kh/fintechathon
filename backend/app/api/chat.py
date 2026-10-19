@@ -14,6 +14,7 @@ from app.core.db import scoped_session
 from app.core.deps import Principal, own_db, passive_user_principal, user_principal
 from app.core.llm import transcribe
 from app.models import ChatMessage, ChatRoom, Notification, UserProfile
+from app.services.gmail import must_connect_first
 from app.services.omb import GatewayError, ensure_room, send_to_room
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -68,6 +69,8 @@ async def _send(user_id: uuid.UUID, text: str) -> dict:
         raise HTTPException(429, "slow_down")
     send_id = uuid.uuid4().hex
     async with scoped_session(user_id, "user") as s:
+        if await must_connect_first(s, user_id):
+            raise HTTPException(409, "connect_gmail_first")
         msg = ChatMessage(user_id=user_id, role="user", sender="you", text=text, omb_message_id=None)
         s.add(msg)
         await s.flush()

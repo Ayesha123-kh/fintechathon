@@ -37,6 +37,9 @@ export default function DashboardPage() {
 
 function DashboardView({ d }: { d: Dashboard }) {
   const { user } = useSession();
+  const { data: email } = useSWR<{ configured: boolean; connections: unknown[] }>(
+    user && !user.onboarding_completed ? "/email/connections" : null, fetcher);
+  const needsEmail = !!email?.configured && email.connections.length === 0;
   const [bank, setBank] = useState<string | null>(null);
   const [tab, setTab] = useMobileTab();
   // On phones only the active tab's sections are shown; laptops always show everything.
@@ -55,7 +58,20 @@ function DashboardView({ d }: { d: Dashboard }) {
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Your money at a glance</h1>
       </div>
 
-      {!user?.onboarding_completed && tab === "home" && (
+      {!user?.onboarding_completed && tab === "home" && needsEmail && (
+        <button onClick={() => openSettings("email")}
+          className="flex w-full items-center gap-4 rounded-[var(--radius-card)] bg-forest p-5 text-left text-forest-ink">
+          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-ink">
+            <Mail className="size-6" aria-hidden />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold">Step 1: connect your Gmail</p>
+            <p className="text-sm opacity-85">We read your bank alerts (read-only) so your plan starts from real spending. Then chat with your assistant.</p>
+          </div>
+          <ChevronRight className="size-5" aria-hidden />
+        </button>
+      )}
+      {!user?.onboarding_completed && tab === "home" && !needsEmail && (
         <Link href="?chat=1" className="flex items-center gap-4 rounded-[var(--radius-card)] bg-forest p-5 text-forest-ink">
           <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-ink">
             <MessageCircle className="size-6" aria-hidden />

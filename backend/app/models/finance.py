@@ -62,6 +62,9 @@ class BankAccount(UUIDPk, UserOwned, Timestamps, Base):
     account_type: Mapped[str] = mapped_column(String(20), default="current")  # current | savings | wallet
     last4: Mapped[str | None] = mapped_column(String(4))
     balance: Mapped[Decimal] = mapped_column(default=0)
+    # When `balance` was last known for certain (the person stated it, or a bank alert reported it). Bank alerts
+    # dated before this are already part of the balance, so importing them must not change it again.
+    balance_as_of: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
 
 

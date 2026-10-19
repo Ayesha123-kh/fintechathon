@@ -29,7 +29,7 @@ from app.models import (
 )
 from app.services.categorize import categorize
 from app.services.merchant_screen import classify_payee, status_for
-from app.services.text import normalize_name
+from app.services.text import normalize_name, transaction_title
 
 log = logging.getLogger(__name__)
 CENT = Decimal("0.01")
@@ -105,6 +105,8 @@ async def record_transaction(
         category = merchant_cat or (await categorize(merchant, description))[0]
     if category and not await s.get(Category, category):
         category = "misc"
+    if direction == "debit" and category == "income":  # money going out is never income
+        category = "misc"
     profile = await s.get(UserProfile, user_id)
     if is_income is None:
         is_income = direction == "credit" and (
@@ -114,8 +116,9 @@ async def record_transaction(
     if is_income:
         category = "income"
 
+    occurred_at = occurred_at or datetime.now(UTC)
     tx = Transaction(
-        user_id=user_id, account_id=account_id, occurred_at=occurred_at or datetime.now(UTC), amount=amount,
+        user_id=user_id, account_id=account_id, occurred_at=occurred_at, amount=amount,
         direction=direction, merchant_raw=merchant[:200], merchant_id=merchant_id, category_slug=category or "misc",
         description=description, channel=channel, source=source, external_id=external_id,
         balance_after=money(balance_after) if balance_after is not None else None, is_income=bool(is_income),
@@ -125,9 +128,13 @@ async def record_transaction(
 
     if account_id:
         account = await s.get(BankAccount, account_id)
-        if account:
+        # An imported alert older than the last known balance is already counted in it (e.g. the person said
+        # "I have 0 in Meezan", then Gmail brought in last month's alerts). Things told in chat always apply.
+        already_counted = source == "gmail" and account and account.balance_as_of and occurred_at <= account.balance_as_of
+        if account and not already_counted:
             if balance_after is not None:
                 account.balance = money(balance_after)
+                account.balance_as_of = occurred_at
             else:
                 account.balance = money(account.balance) + (amount if direction == "credit" else -amount)
 
@@ -386,7 +393,7 @@ async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
         ],
         "recent_transactions": [
             {"id": str(t.id), "occurred_at": t.occurred_at, "amount": money(t.amount), "direction": t.direction,
-             "merchant": t.merchant_raw, "category": t.category_slug, "source": t.source}
+             "merchant": transaction_title(t.merchant_raw, t.description), "category": t.category_slug, "source": t.source}
             for t in recent
         ],
     }

@@ -41,10 +41,12 @@ from app.models import (
     WatchCluster,
 )
 from app.services import deal_detect, finance
+from app.services.cards import match_card
 from app.services.deals import estimate_saving
 from app.services.deals import find_deals as find_deals_svc
 from app.services.notify import notify
 from app.services.omb import refresh_room, user_id_for_member_key
+from app.services.text import transaction_title
 
 mcp = FastMCP(
     "fin_user",
@@ -285,7 +287,8 @@ async def list_card_products(member_key: str, bank: str, card_type: Literal["deb
     """The cards a bank issues (name, network, tier, debit/credit), from our catalog. Offer these when the person
     adds a card so names and tiers stay consistent. 'confidence' is how sure we are the card still exists
     (official > bank_site > weak); a null network means the bank's page did not say, so ask the person.
-    The person may own a card that is not listed: still save it with add_card."""
+    Only these cards can be saved with add_card; if the person names one that isn't listed, ask which of these
+    they mean."""
     async with member(member_key) as (s, _):
         b = await _bank_by_name(s, bank)
         stmt = select(CardProduct).where(CardProduct.bank_id == b.id).order_by(CardProduct.card_type, CardProduct.name)
@@ -302,6 +305,7 @@ async def add_bank_account(member_key: str, bank: str, account_type: Literal["cu
         b = await _bank_by_name(s, bank)
         count = await s.scalar(select(func.count()).select_from(BankAccount))
         acc = BankAccount(user_id=uid, bank_id=b.id, account_type=account_type, balance=balance or 0,
+                          balance_as_of=datetime.now(UTC) if balance is not None else None,
                           nickname=nickname or b.short_name, last4=last4, is_primary=count == 0)
         s.add(acc)
         await s.flush()
@@ -318,7 +322,7 @@ async def update_bank_account(member_key: str, account_id: str, balance: float |
         if not acc:
             raise ToolError("No such account.")
         if balance is not None:
-            acc.balance = balance
+            acc.balance, acc.balance_as_of = balance, datetime.now(UTC)
         if nickname is not None:
             acc.nickname = nickname
         if last4 is not None:
@@ -342,28 +346,34 @@ async def remove_bank_account(member_key: str, account_id: str) -> dict:
 @mcp.tool()
 async def add_card(member_key: str, bank: str, network: Literal["visa", "mastercard", "unionpay", "paypak", "amex"],
                    card_type: Literal["debit", "credit"] = "debit", tier: str | None = None) -> dict:
-    """Save a debit/credit card, e.g. 'Visa Silver debit card of Meezan Bank' -> bank='Meezan Bank',
-    network='visa', tier='silver', card_type='debit'. Cards decide which bank discounts apply.
+    """Save a debit/credit card, e.g. 'Visa Gold debit card of Meezan Bank' -> bank='Meezan Bank',
+    network='visa', tier='gold', card_type='debit'. Cards decide which bank discounts apply.
+    Only cards in our catalog of what each bank really issues can be saved. If it isn't one, nothing is saved and
+    you get `did_you_mean` (closest real cards) or `which_one` (several fit): ask the person, then call again with
+    the confirmed network / tier. Never save a card the person hasn't confirmed.
     Only the card TYPE is stored: never ask for or save any card digits (not even the last 4), CVV, PIN or OTP."""
     async with member(member_key) as (s, uid):
         b = await _bank_by_name(s, bank)
-        tier_txt = f" {tier.title()}" if tier else ""
-        label = f"{network.title()}{tier_txt} {card_type.title()} Card of {b.name}"
+        products = list((await s.execute(select(CardProduct).where(CardProduct.bank_id == b.id))).scalars())
+        m = match_card(products, network, card_type, tier)
+        asked = f"{network.title()}{f' {tier.title()}' if tier else ''} {card_type} card"
+        if m.options:
+            return {"ok": False, "saved": False, "which_one": [_product_row(p) for p in m.options],
+                    "ask": f"{b.name} has several {network.title()} {card_type} cards. Ask the person which one they "
+                           "have, then call add_card again with its tier."}
+        if not m.product:
+            return {"ok": False, "saved": False, "did_you_mean": [_product_row(p) for p in m.closest],
+                    "ask": f"{b.name} doesn't issue a {asked} as far as our catalog knows, so it was NOT saved. Ask "
+                           f"the person, e.g. \"Did you mean the {m.closest[0].name}?\"" if m.closest else
+                           f"We don't know any cards {b.name} issues, so it was NOT saved. Tell the person we can't "
+                           "add this card yet."}
+        p = m.product
         acc_id = await s.scalar(select(BankAccount.id).where(BankAccount.bank_id == b.id).limit(1))
-        card = Card(user_id=uid, bank_id=b.id, network=network, tier=(tier or None) and tier.lower(),
-                    card_type=card_type, label=label, account_id=acc_id)
+        card = Card(user_id=uid, bank_id=b.id, network=p.network or network, tier=p.tier, card_type=p.card_type,
+                    label=p.name, account_id=acc_id)
         s.add(card)
         await s.flush()
-        # Does this match a card the bank is known to issue? If not, hand back the bank's list so the assistant
-        # can check the tier / network with the person (it is still saved).
-        known = (await s.execute(select(CardProduct).where(
-            CardProduct.bank_id == b.id, CardProduct.card_type == card_type))).scalars().all()
-        in_catalog = any((p.network in (None, network)) and (not tier or (p.tier or "") == tier.lower()) for p in known)
-        out = {"ok": True, "card_id": str(card.id), "label": label, "in_catalog": in_catalog}
-        if known and not in_catalog:
-            out["note"] = "Not one of the cards we know this bank issues; confirm the network and tier with the person."
-            out["bank_has"] = [_product_row(p) for p in known][:15]
-        return out
+        return {"ok": True, "saved": True, "card_id": str(card.id), "label": card.label}
 
 
 @mcp.tool()
@@ -484,7 +494,7 @@ async def list_transactions(member_key: str, days: int = 30, category: str | Non
             stmt = stmt.where(Transaction.merchant_raw.ilike(f"%{merchant}%"))
         rows = (await s.execute(stmt.order_by(Transaction.occurred_at.desc()).limit(min(limit, 200)))).scalars()
         return out([{"id": t.id, "date": t.occurred_at, "amount": t.amount, "direction": t.direction,
-                     "merchant": t.merchant_raw, "category": t.category_slug, "source": t.source} for t in rows])
+                     "merchant": transaction_title(t.merchant_raw, t.description), "category": t.category_slug, "source": t.source} for t in rows])
 
 
 @mcp.tool()

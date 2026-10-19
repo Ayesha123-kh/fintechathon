@@ -44,7 +44,9 @@ class Settings(BaseSettings):
     @property
     def desk_llm_enabled(self) -> bool:
         return bool(self.desk_llm_base_url and self.desk_llm_model)
-    relay_final_after_seconds: float = 4.0
+    # A reply is final when its turn ends (OMB's digest). This is only the fallback when that signal never comes:
+    # the thread has shown no sign of life (no thinking, tool call or text) for this long.
+    relay_final_after_seconds: float = 300.0
 
 
 @lru_cache

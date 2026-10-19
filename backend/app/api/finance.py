@@ -29,6 +29,7 @@ from app.models import (
 from app.services import finance
 from app.services.deals import find_deals
 from app.services.omb import refresh_room
+from app.services.text import transaction_title
 
 router = APIRouter(tags=["finance"])
 
@@ -135,7 +136,7 @@ async def bank_details(p: Principal = Depends(user_principal), s: AsyncSession =
                                     "type": c.card_type}
                                    for c, _ in cards if c.account_id == acc_id],
                          "transactions": [{"id": str(t.id), "occurred_at": t.occurred_at, "amount": t.amount,
-                                           "direction": t.direction, "merchant": t.merchant_raw,
+                                           "direction": t.direction, "merchant": transaction_title(t.merchant_raw, t.description),
                                            "category": t.category_slug} for t in txs]})
     unlinked = [{"id": str(c.id), "label": c.label, "bank": bank, "network": c.network, "tier": c.tier,
                  "type": c.card_type} for c, bank in cards if c.account_id is None]
@@ -153,7 +154,7 @@ async def transactions(days: int = 30, category: str | None = None, account_id: 
         stmt = stmt.where(Transaction.account_id == account_id)
     rows = (await s.execute(stmt.order_by(Transaction.occurred_at.desc()).limit(min(limit, 200)))).scalars()
     return [{"id": str(t.id), "occurred_at": t.occurred_at, "amount": t.amount, "direction": t.direction,
-             "merchant": t.merchant_raw, "category": t.category_slug, "source": t.source} for t in rows]
+             "merchant": transaction_title(t.merchant_raw, t.description), "category": t.category_slug, "source": t.source} for t in rows]
 
 
 @router.get("/deals")
