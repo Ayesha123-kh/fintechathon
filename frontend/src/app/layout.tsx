@@ -14,11 +14,11 @@ const jakarta = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Bachat",
+  title: "Saving",
   description: "Your personal savings assistant: goals, discounts and smart money habits.",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icons/favicon-64.png", apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Bachat", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Saving", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
