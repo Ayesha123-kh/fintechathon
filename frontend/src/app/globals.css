@@ -124,6 +124,8 @@
   --color-hover: var(--hover);
   --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --radius-card: 1.75rem;
+  /* Laptops wide enough for goals + spending, then banks / deals / activity, side by side (1380px). */
+  --breakpoint-wide: 86.25rem;
 }
 
 :root[data-theme="light"] {
