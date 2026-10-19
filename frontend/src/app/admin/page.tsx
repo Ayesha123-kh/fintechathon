@@ -31,7 +31,7 @@ export default function AdminPage() {
             {TABS.map(({ id, label, icon: Icon }) => (
               <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
                 className={clsx("inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
-                  tab === id ? "bg-forest text-forest-ink" : "bg-surface text-ink-2")}>
+                  tab === id ? "bg-primary text-primary-ink" : "bg-surface text-ink-2 hover:bg-hover")}>
                 <Icon className="size-4" aria-hidden /> {label}
               </button>
             ))}
@@ -245,7 +245,7 @@ function DealsTab() {
       <div className="flex flex-wrap gap-2">
         {["pending_review", "active", "expired", "rejected"].map((s) => (
           <button key={s} onClick={() => setStatus(s)}
-            className={clsx("rounded-full px-3 py-1.5 text-xs font-semibold", status === s ? "bg-forest text-forest-ink" : "bg-surface-2")}>
+            className={clsx("rounded-full px-3 py-1.5 text-xs font-semibold", status === s ? "bg-primary text-primary-ink" : "bg-surface-2 hover:bg-hover")}>
             {s.replace("_", " ")}
           </button>
         ))}
