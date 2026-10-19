@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Loader2, MessageCircle, MessageCircleMore, Mic, Send, Square, X } from "lucide-react";
+import { AlertCircle, Bell, MessageCircleMore, Mic, Send, Sprout, Square, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { api, errorText } from "@/lib/api";
@@ -271,104 +271,132 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
 
       {open && (
         <div role="dialog" aria-label="Chat"
-          className="fixed inset-0 z-50 flex items-stretch justify-center p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:inset-auto sm:right-6 sm:bottom-6 sm:p-0">
+          className="fixed inset-0 z-50 flex items-stretch justify-center pt-[env(safe-area-inset-top)] sm:inset-auto sm:right-6 sm:bottom-6 sm:pt-0">
           <div className={clsx("absolute inset-0 touch-none bg-ink/30 sm:hidden", closing && "fade-closing")} onClick={close} />
           <div className={clsx("pop-br relative flex h-full w-full min-w-0 sm:h-auto sm:w-auto", closing && "is-closing")}>
-          <section className="relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-2xl sm:h-[640px] sm:max-h-[calc(100dvh-3rem)] sm:w-[400px]">
-            <header className="flex items-center gap-3 bg-forest px-4 py-3.5 text-forest-ink">
-              <div className="grid size-10 place-items-center rounded-full bg-primary text-primary-ink">
-                <MessageCircle className="size-5" aria-hidden />
-              </div>
+          <section className="relative flex h-full w-full min-w-0 flex-col overflow-hidden bg-surface shadow-2xl sm:h-[min(780px,calc(100dvh-3rem))] sm:w-[min(500px,calc(100vw-3rem))] sm:rounded-[var(--radius-card)] lg:w-[540px]">
+            <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3.5 sm:px-5 sm:py-4">
+              <span className="relative">
+                <AssistantAvatar size="lg" />
+                <span className={clsx("absolute -right-0.5 -bottom-0.5 size-3.5 rounded-full ring-2 ring-surface",
+                  status === "ready" ? "bg-[#3fb37f]" : status === "error" ? "bg-alert" : "bg-badge")} aria-hidden />
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold">Your money team</p>
-                <p className="truncate text-xs opacity-80">
-                  {status === "ready" ? "Assistant · Savings Coach · Deals Advisor" : status === "error" ? "Reconnecting…" : "Setting up your assistant…"}
+                <p className="text-lg leading-tight font-bold text-ink">Saving assistant</p>
+                <p className="truncate text-sm text-muted">
+                  {waiting ? "typing…" : status === "ready" ? "Online · Savings Coach · Deals Advisor" : status === "error" ? "Reconnecting…" : "Setting up your assistant…"}
                 </p>
               </div>
-              <button onClick={close} aria-label="Close chat" className="grid size-9 place-items-center rounded-full hover:bg-white/10">
+              <button onClick={close} aria-label="Close chat" className="grid size-10 place-items-center rounded-full text-ink-2 hover:bg-hover">
                 <X className="size-5" />
               </button>
             </header>
 
-            <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-bg px-3 py-4">
+            {/* WhatsApp-style thread: the assistant on the left, you on the right, a date pill whenever the day changes. */}
+            <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-bg px-3 py-5 sm:px-5">
               {messages.length === 0 && (
-                <div className="mx-auto max-w-[85%] rounded-3xl bg-surface p-4 text-center text-sm text-ink-2">
-                  Assalam o Alaikum{user?.full_name ? ` ${user.full_name.split(" ")[0]}` : ""}! 👋 I&apos;m your savings
-                  assistant. Tell me about your banks, cards and what you&apos;re saving for, and I&apos;ll build a plan
-                  with you. English, Urdu or Roman Urdu are all fine.
-                </div>
+                <Row side="left" avatar>
+                  <div className="chat-text rounded-2xl rounded-bl-md bg-surface px-4 py-3 text-[15px] leading-relaxed text-ink shadow-sm">
+                    Assalam o Alaikum{user?.full_name ? ` ${user.full_name.split(" ")[0]}` : ""}! 👋 I&apos;m your savings
+                    assistant. Tell me about your banks, cards and what you&apos;re saving for, and I&apos;ll build a plan
+                    with you. English, Urdu or Roman Urdu are all fine.
+                  </div>
+                </Row>
               )}
               {messages.map((m, i) => {
+                const prev = messages[i - 1];
+                const next = messages[i + 1];
+                const side = (x?: Msg) => (x ? (x.role === "user" ? "right" : "left") : null);
+                const newDay = !prev || dayKey(prev.created_at) !== dayKey(m.created_at);
                 const firstUnread = readAt !== null && m.role === "bot" && isAfter(m.created_at, readAt) &&
                   !messages.slice(0, i).some((p) => p.role === "bot" && isAfter(p.created_at, readAt));
+                const startsGroup = newDay || firstUnread || side(prev) !== side(m);
+                const nextNewDay = !!next && dayKey(next.created_at) !== dayKey(m.created_at);
+                const endsGroup = !next || nextNewDay || side(next) !== side(m);
                 return (
                   <Fragment key={m.id}>
-                    {firstUnread && (
-                      <div ref={dividerRef} className="flex items-center gap-2 px-2 text-[11px] font-semibold text-forest dark:text-primary">
-                        <span className="h-px flex-1 bg-current opacity-40" /> New messages <span className="h-px flex-1 bg-current opacity-40" />
+                    {newDay && m.created_at && (
+                      <div className="my-3 flex justify-center first:mt-0">
+                        <span className="rounded-full bg-surface px-3 py-1 text-xs font-medium text-muted shadow-sm">{dayLabel(m.created_at)}</span>
                       </div>
                     )}
-                    <Bubble m={m} />
+                    {firstUnread && (
+                      <div ref={dividerRef} className="my-3 flex justify-center">
+                        <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-ink">New messages</span>
+                      </div>
+                    )}
+                    <div className={startsGroup ? "mt-3 first:mt-0" : "mt-1"}>
+                      <Bubble m={m} first={startsGroup} last={endsGroup} />
+                    </div>
                   </Fragment>
                 );
               })}
               {waiting && (
-                <div className="flex items-center gap-2 px-2 text-sm text-muted">
-                  <Loader2 className="size-4 animate-spin" aria-hidden /> Thinking…
+                <div className="mt-3">
+                  <Row side="left" avatar>
+                    <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-surface px-4 py-3.5 shadow-sm" role="status" aria-label="Assistant is typing">
+                      {[0, 1, 2].map((d) => (
+                        <span key={d} className="size-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${d * 150}ms` }} />
+                      ))}
+                    </div>
+                  </Row>
                 </div>
               )}
             </div>
 
-            {messages.length < 3 && !waiting && (
-              <div className="flex gap-2 overflow-x-auto overscroll-x-contain px-3 pt-2">
-                {suggestions.map((s) => (
-                  <button key={s} onClick={() => send(s)} className="shrink-0 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-medium">
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
-            {error && <p className="px-4 pt-2 text-xs text-danger" role="alert">{error}</p>}
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                send(text);
-              }}
-              className="flex items-end gap-2 border-t border-line px-3 py-3"
-            >
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send(text);
-                  }
-                }}
-                rows={1}
-                placeholder={recording ? "Listening… tap stop when done" : "Message your assistant"}
-                aria-label="Message"
-                className="max-h-32 min-h-11 flex-1 resize-none rounded-3xl border border-line bg-surface-2 px-4 py-2.5 text-[15px] outline-none focus:border-forest"
-              />
-              {text.trim() ? (
-                <button type="submit" aria-label="Send" className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-ink">
-                  <Send className="size-5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={toggleRecording}
-                  aria-label={recording ? "Stop recording" : "Record a voice message"}
-                  className={clsx(
-                    "grid size-11 shrink-0 place-items-center rounded-full",
-                    recording ? "animate-pulse bg-danger text-white" : "bg-forest text-forest-ink",
-                  )}
-                >
-                  {recording ? <Square className="size-4" /> : <Mic className="size-5" />}
-                </button>
+            <div className="border-t border-line bg-surface">
+              {messages.length < 3 && !waiting && (
+                <div className="flex gap-2 overflow-x-auto overscroll-x-contain px-3 pt-3 sm:px-5">
+                  {suggestions.map((s) => (
+                    <button key={s} onClick={() => send(s)}
+                      className="shrink-0 rounded-full border border-line bg-bg px-3.5 py-2 text-sm font-medium text-ink-2 transition hover:border-forest hover:text-ink">
+                      {s}
+                    </button>
+                  ))}
+                </div>
               )}
-            </form>
+              {error && <p className="px-4 pt-2 text-sm text-danger sm:px-5" role="alert">{error}</p>}
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  send(text);
+                }}
+                className="flex items-end gap-2 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pb-4"
+              >
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      send(text);
+                    }
+                  }}
+                  rows={1}
+                  placeholder={recording ? "Listening… tap stop when done" : "Type a message"}
+                  aria-label="Message"
+                  className="max-h-36 min-h-12 flex-1 resize-none rounded-3xl border border-line bg-bg px-5 py-3 text-[15px] text-ink outline-none placeholder:text-muted focus:border-forest"
+                />
+                {text.trim() ? (
+                  <button type="submit" aria-label="Send" className="grid size-12 shrink-0 place-items-center rounded-full bg-forest text-forest-ink transition hover:brightness-110 active:scale-95">
+                    <Send className="size-5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={toggleRecording}
+                    aria-label={recording ? "Stop recording" : "Record a voice message"}
+                    className={clsx(
+                      "grid size-12 shrink-0 place-items-center rounded-full transition active:scale-95",
+                      recording ? "animate-pulse bg-danger text-white" : "bg-forest text-forest-ink hover:brightness-110",
+                    )}
+                  >
+                    {recording ? <Square className="size-4" /> : <Mic className="size-5" />}
+                  </button>
+                )}
+              </form>
+            </div>
           </section>
           </div>
         </div>
@@ -387,39 +415,68 @@ function isAfter(when: string | null, ref: string) {
   return !!when && new Date(when).getTime() > new Date(ref).getTime();
 }
 
-function Bubble({ m }: { m: Msg }) {
-  const mine = m.role === "user";
-  if (m.kind === "notification") {
-    return (
-      <div className="flex flex-col items-start">
-        <span className="mb-1 inline-flex items-center gap-1 px-2 text-[11px] font-semibold text-muted">
-          <Bell className="size-3" aria-hidden /> Saving
-        </span>
-        <div className="chat-text max-w-[85%] rounded-3xl rounded-bl-lg bg-deal-bg px-4 py-2.5 text-[15px] leading-relaxed text-ink">
-          <RichText text={m.text} />
-        </div>
-      </div>
-    );
-  }
-  if (m.role === "system") {
-    return (
-      <p role="status" className="mx-auto max-w-[90%] rounded-2xl border border-danger/40 bg-danger/10 px-3 py-2 text-center text-xs text-danger">
-        {m.text}
-      </p>
-    );
-  }
+const dayKey = (d: string | null) => (d ? new Date(d).toDateString() : "");
+const time = (d: string | null) => (d ? new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "");
+function dayLabel(d: string) {
+  const date = new Date(d);
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 86_400_000);
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+/** The assistant's round sprout avatar, in the dashboard's peach and green. */
+function AssistantAvatar({ size = "sm" }: { size?: "sm" | "lg" }) {
   return (
-    <div className={clsx("flex flex-col", mine ? "items-end" : "items-start")}>
-      {!mine && m.sender && <span className="mb-1 px-2 text-[11px] font-semibold text-muted">{m.sender}</span>}
-      <div
-        className={clsx(
-          "chat-text max-w-[85%] rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed",
-          mine ? "rounded-br-lg bg-primary text-primary-ink" : "rounded-bl-lg bg-surface text-ink",
-        )}
-      >
-        <RichText text={m.text} />
-      </div>
+    <span aria-hidden className={clsx("grid shrink-0 place-items-center rounded-full bg-primary text-forest",
+      size === "lg" ? "size-11" : "size-8")}>
+      <Sprout className={size === "lg" ? "size-5" : "size-4"} strokeWidth={2.25} />
+    </span>
+  );
+}
+
+/** One side of the thread. The assistant's side keeps a column for its avatar so its bubbles line up. */
+function Row({ side, avatar, children }: { side: "left" | "right"; avatar?: boolean; children: React.ReactNode }) {
+  if (side === "right") return <div className="flex justify-end pl-12 sm:pl-16">{children}</div>;
+  return (
+    <div className="flex items-end gap-2 pr-12 sm:pr-16">
+      {avatar ? <AssistantAvatar /> : <span className="w-8 shrink-0" aria-hidden />}
+      <div className="min-w-0">{children}</div>
     </div>
+  );
+}
+
+function Bubble({ m, first, last }: { m: Msg; first: boolean; last: boolean }) {
+  const mine = m.role === "user";
+  const stamp = time(m.created_at);
+  if (mine) {
+    return (
+      <Row side="right">
+        <div className={clsx("chat-text rounded-2xl bg-forest px-4 pt-2.5 pb-1.5 text-[15px] leading-relaxed text-forest-ink shadow-sm",
+          last && "rounded-br-md")}>
+          <RichText text={m.text} />
+          {stamp && <p className="mt-0.5 text-right text-[11px] text-forest-muted">{stamp}</p>}
+        </div>
+      </Row>
+    );
+  }
+  const tone = m.kind === "notification" ? "bg-deal-bg text-ink" : m.role === "system" ? "bg-danger/10 text-danger" : "bg-surface text-ink";
+  return (
+    <Row side="left" avatar={last}>
+      {first && (m.kind === "notification" || m.sender) && (
+        <p className="mb-1 flex items-center gap-1 px-1 text-xs font-semibold text-forest dark:text-primary">
+          {m.kind === "notification" && <Bell className="size-3" aria-hidden />}
+          {m.kind === "notification" ? "Saving" : m.role === "system" ? "Saving assistant" : m.sender}
+        </p>
+      )}
+      <div role={m.role === "system" ? "status" : undefined}
+        className={clsx("chat-text rounded-2xl px-4 pt-2.5 pb-1.5 text-[15px] leading-relaxed shadow-sm", tone, last && "rounded-bl-md")}>
+        {m.role === "system" && <AlertCircle className="mr-1.5 mb-0.5 inline size-4 align-middle" aria-hidden />}
+        <RichText text={m.text} />
+        {stamp && <p className="mt-0.5 text-right text-[11px] text-muted">{stamp}</p>}
+      </div>
+    </Row>
   );
 }
 
