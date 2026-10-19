@@ -1,5 +1,8 @@
 .env
 .env.local
+# backend/.env (a symlink to the root .env) and ai-ml/.env (references only) are tracked; never put real values in them
+!/backend/.env
+!/ai-ml/.env
 **/.venv/
 **/__pycache__/
 **/.pytest_cache/

@@ -83,6 +83,8 @@ const ERRORS: Record<string, string> = {
   invalid_or_expired_token: "This reset link has expired. Request a new one.",
   account_disabled: "This account has been disabled. Contact support.",
   unknown_passkey: "This passkey isn't registered. Sign in with your password first.",
+  invalid_code: "That code isn't right. Check the email and try again.",
+  signup_expired: "That code has expired. Go back and sign up again.",
   slow_down: "You're sending messages too quickly.",
 };
 

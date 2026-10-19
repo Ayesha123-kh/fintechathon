@@ -23,7 +23,7 @@ export default function SignIn() {
   const done = async (u: User) => {
     setUser(u);
     await reload();
-    router.replace("/dashboard");
+    router.replace(u.role === "admin" ? "/admin" : "/dashboard");
   };
 
   const submit = async (e: React.FormEvent) => {

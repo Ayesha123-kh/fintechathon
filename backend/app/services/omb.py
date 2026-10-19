@@ -7,7 +7,7 @@ import httpx
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.crypto import decrypt, encrypt, member_key, sha256
+from app.core.crypto import encrypt, member_key, sha256, try_decrypt
 from app.core.db import scoped_session, system_session
 from app.models import ChatRoom, User, UserProfile
 
@@ -30,9 +30,24 @@ async def _call(method: str, path: str, json: dict | None = None, timeout: float
     return r.json() if r.content else {}
 
 
+_LANGUAGES = {"en": "English", "roman_ur": "Roman Urdu (Urdu written in English letters)", "ur": "Urdu script (اردو)"}
+
+
+def _reply_language(user: User, profile: UserProfile | None) -> str:
+    """Decided from the person's onboarding answers (Roman Urdu over Urdu script), then fixed until they ask."""
+    lang = profile.language if profile else "en"
+    if lang == "en" and not user.onboarding_completed:
+        return ("English for now. As soon as they answer in Urdu (Roman Urdu or Urdu script), save "
+                "update_profile(language='roman_ur') and reply in Roman Urdu from then on. Prefer Roman Urdu over "
+                "Urdu script; never decide on Urdu script yourself.")
+    return (f"{_LANGUAGES.get(lang, 'English')}. Use it for every reply, whatever language or script they write in. "
+            "Change it only when they explicitly ask for another language, then save it with "
+            "update_profile(language=...): 'en', 'roman_ur' or 'ur' (Urdu script).")
+
+
 def build_bulletin(user: User, profile: UserProfile | None, key: str) -> str:
     """The room's standing brief. Every bot in the user's room reads it on every turn."""
-    lang = {"ur": "Urdu", "roman_ur": "Roman Urdu"}.get(profile.language if profile else "en", "English")
+    lang = _reply_language(user, profile)
     invest = "OPTED IN (disclaimer accepted)" if profile and profile.investment_opt_in else "NOT opted in"
     return f"""# Private finance room
 
@@ -45,7 +60,7 @@ Pass this exact value as `member_key` on EVERY fin_user tool call:
 Never reveal, repeat or explain the member key in a reply.
 
 ## Context
-- Preferred reply language: {lang} (always mirror the language the person writes in: English, Urdu or Roman Urdu).
+- Reply language: {lang}
 - Currency: PKR (write amounts like Rs. 25,000).
 - Onboarding finished: {"yes" if user.onboarding_completed else "no - the Finance Assistant leads onboarding"}.
 - Investment advisory board: {invest}.
@@ -56,6 +71,21 @@ Never reveal, repeat or explain the member key in a reply.
 - Messages starting with [SCHEDULER] come from the app's scheduler, not from the person.
 - Keep replies short and friendly for a phone screen; use bullet points for lists.
 """
+
+
+def room_member_key(room: ChatRoom) -> str:
+    """The room's member key, or a new one when the stored copy no longer decrypts (ENCRYPTION_KEY changed).
+
+    A new key leaves the room's bots holding a stale bulletin, so soul_version is cleared and the
+    room is re-applied (straight away by ensure_room, or by the gateway's next sync_users).
+    """
+    key = try_decrypt(room.member_key_enc)
+    if key is None:
+        log.warning("member key of %s does not decrypt (ENCRYPTION_KEY changed?); issuing a new one", room.user_id)
+        key = member_key()
+        room.member_key_hash, room.member_key_enc = sha256(key), encrypt(key)
+        room.soul_version = None
+    return key
 
 
 async def ensure_room(user_id: uuid.UUID) -> ChatRoom:
@@ -70,7 +100,10 @@ async def ensure_room(user_id: uuid.UUID) -> ChatRoom:
             s.add(room)
             await s.flush()
         else:
-            key = decrypt(room.member_key_enc)
+            stored_hash = room.member_key_hash
+            key = room_member_key(room)
+            if room.member_key_hash != stored_hash:
+                room.status = "pending"  # re-provision now so the bots get the new key
         if room.status == "ready" and room.omb_room_id:
             return room
         try:
@@ -101,7 +134,7 @@ async def refresh_room(user_id: uuid.UUID) -> None:
             return
         user = await s.get(User, user_id)
         profile = await s.get(UserProfile, user_id)
-        bulletin = build_bulletin(user, profile, decrypt(room.member_key_enc))
+        bulletin = build_bulletin(user, profile, room_member_key(room))
         investment = bool(profile and profile.investment_opt_in)
         room_id = room.omb_room_id
         display_name = user.full_name or user.email.split("@")[0]

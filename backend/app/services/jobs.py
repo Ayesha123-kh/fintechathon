@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from app.core.db import scoped_session, system_session
 from app.models import AgentRegistry, ChatRoom, Merchant, SavingsEntry, Transaction, User, UserProfile
 from app.services import finance
+from app.services.merchant_screen import screen_pending_merchants
 from app.services.notify import notify
 from app.services.omb import GatewayError, send_to_room, trigger_bot
 
@@ -53,7 +54,12 @@ async def wake_analysts() -> None:
                                  "requests by assigning symbols to the right cluster.")
 
 
+async def screen_merchants() -> None:
+    await screen_pending_merchants()
+
+
 async def wake_deal_scout() -> None:
+    await screen_pending_merchants()  # only businesses judged by the self-hosted model reach the deal bots
     async with system_session() as s:
         pending = await s.scalar(select(func.count()).select_from(Merchant)
                                  .where(Merchant.sources_status.in_(["pending", "failed"])))
@@ -79,7 +85,7 @@ async def _active_users() -> list[tuple]:
         return (await s.execute(
             select(User.id, User.full_name, UserProfile)
             .join(UserProfile, UserProfile.user_id == User.id)
-            .where(User.is_active.is_(True), User.onboarding_completed.is_(True))
+            .where(User.is_active.is_(True), User.role == "user", User.onboarding_completed.is_(True))
         )).all()
 
 

@@ -28,7 +28,8 @@ from app.models import (
     UserProfile,
 )
 from app.services.categorize import categorize
-from app.services.text import normalize_name
+from app.services.merchant_screen import classify_payee, status_for
+from app.services.text import normalize_name, transaction_title
 
 log = logging.getLogger(__name__)
 CENT = Decimal("0.01")
@@ -54,12 +55,14 @@ async def resolve_merchant(name: str, description: str = "") -> tuple[uuid.UUID 
     category, sub = await categorize(name, description)
     if category in ("transfer", "income"):
         return None, category
+    # The self-hosted model decides whether this is a business the deal bots may look up or a private payee.
+    status = status_for(await classify_payee(name, description))
     async with system_session() as s:
-        # A new merchant starts as 'pending': the deal Source Scout will find its website and socials.
+        # A business starts as 'pending': the deal Source Scout will find its website and socials.
         row = await s.execute(
             insert(Merchant)
             .values(name=name.strip()[:160], normalized_name=key, category_slug=category, subcategory=sub,
-                    seen_in_transactions=1)
+                    seen_in_transactions=1, sources_status=status)
             .on_conflict_do_update(index_elements=["normalized_name"],
                                    set_={"seen_in_transactions": Merchant.seen_in_transactions + 1})
             .returning(Merchant.id, Merchant.category_slug)
@@ -102,6 +105,8 @@ async def record_transaction(
         category = merchant_cat or (await categorize(merchant, description))[0]
     if category and not await s.get(Category, category):
         category = "misc"
+    if direction == "debit" and category == "income":  # money going out is never income
+        category = "misc"
     profile = await s.get(UserProfile, user_id)
     if is_income is None:
         is_income = direction == "credit" and (
@@ -111,8 +116,9 @@ async def record_transaction(
     if is_income:
         category = "income"
 
+    occurred_at = occurred_at or datetime.now(UTC)
     tx = Transaction(
-        user_id=user_id, account_id=account_id, occurred_at=occurred_at or datetime.now(UTC), amount=amount,
+        user_id=user_id, account_id=account_id, occurred_at=occurred_at, amount=amount,
         direction=direction, merchant_raw=merchant[:200], merchant_id=merchant_id, category_slug=category or "misc",
         description=description, channel=channel, source=source, external_id=external_id,
         balance_after=money(balance_after) if balance_after is not None else None, is_income=bool(is_income),
@@ -122,15 +128,32 @@ async def record_transaction(
 
     if account_id:
         account = await s.get(BankAccount, account_id)
-        if account:
+        # An imported alert older than the last known balance is already counted in it (e.g. the person said
+        # "I have 0 in Meezan", then Gmail brought in last month's alerts). Things told in chat always apply.
+        already_counted = source == "gmail" and account and account.balance_as_of and occurred_at <= account.balance_as_of
+        if account and not already_counted:
             if balance_after is not None:
                 account.balance = money(balance_after)
+                account.balance_as_of = occurred_at
             else:
                 account.balance = money(account.balance) + (amount if direction == "credit" else -amount)
 
     if is_income and profile:
         await allocate_income(s, user_id, amount, account_id=account_id, transaction_id=tx.id)
+    if direction == "debit" and merchant_id and not is_income:
+        await _detect_deal_use(s, user_id, tx)
     return tx
+
+
+async def _detect_deal_use(s: AsyncSession, user_id: uuid.UUID, tx: Transaction) -> None:
+    """If this purchase uses a deal the person was told about, count the saving. Never blocks the transaction."""
+    from app.services.deal_detect import detect_redemption
+
+    try:
+        async with s.begin_nested():
+            await detect_redemption(s, user_id, tx)
+    except Exception:
+        log.exception("deal detection failed for transaction %s", tx.id)
 
 
 # ---------------------------------------------------------------- savings allocation
@@ -370,7 +393,7 @@ async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
         ],
         "recent_transactions": [
             {"id": str(t.id), "occurred_at": t.occurred_at, "amount": money(t.amount), "direction": t.direction,
-             "merchant": t.merchant_raw, "category": t.category_slug, "source": t.source}
+             "merchant": transaction_title(t.merchant_raw, t.description), "category": t.category_slug, "source": t.source}
             for t in recent
         ],
     }

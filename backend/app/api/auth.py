@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import hmac
 import json
 import secrets
 import uuid
@@ -27,7 +29,7 @@ from app.core.config import settings
 from app.core.crypto import sha256
 from app.core.db import scoped_session, system_session
 from app.core.deps import ACCESS_COOKIE, REFRESH_COOKIE, Principal, current_principal
-from app.core.mailer import reset_email, send_email
+from app.core.mailer import otp_email, reset_email, send_email
 from app.core.security import (
     create_access_token,
     create_session,
@@ -50,6 +52,15 @@ class SignupIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=200)
+
+
+class SignupVerifyIn(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class SignupResendIn(BaseModel):
+    email: EmailStr
 
 
 class SigninIn(BaseModel):
@@ -98,16 +109,88 @@ async def _login(response: Response, user: User) -> dict:
     return {"user": user_out(user)}
 
 
+# Sign-up needs a one-time code sent to the email. Nothing is written to the database until it is entered;
+# the pending sign-up (name, password hash, hashed code) lives in Redis for OTP_TTL_SECONDS.
+OTP_TTL_SECONDS = 600
+OTP_RESEND_SECONDS = 60
+OTP_MAX_ATTEMPTS = 5
+
+
+def _pending_key(email: str) -> str:
+    return f"signup:{sha256(email)}"
+
+
+def _otp_hash(email: str, code: str) -> str:
+    return hmac.new(settings.jwt_secret.encode(), f"{email}:{code}".encode(), hashlib.sha256).hexdigest()
+
+
+async def _send_signup_code(email: str, name: str) -> None:
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    key = _pending_key(email)
+    await redis.hset(key, mapping={"code_hash": _otp_hash(email, code), "attempts": 0, "sent_at": int(datetime.now(UTC).timestamp())})
+    await redis.expire(key, OTP_TTL_SECONDS)
+    text, html = otp_email(name, code, OTP_TTL_SECONDS // 60)
+    asyncio.get_running_loop().create_task(
+        send_email(email, f"{code} is your {settings.app_name} verification code", text, html))
+
+
+def _pending_out(email: str) -> dict:
+    return {"ok": True, "email": email, "expires_in": OTP_TTL_SECONDS, "resend_in": OTP_RESEND_SECONDS}
+
+
 @router.post("/signup")
-async def signup(body: SignupIn, request: Request, response: Response) -> dict:
+async def signup(body: SignupIn, request: Request) -> dict:
+    """Step 1: validate, park the sign-up in Redis and email a 6-digit code."""
     if not await rate_limit(f"signup:{_client_ip(request)}", 10, 3600):
         raise HTTPException(429, "too_many_attempts")
     email = body.email.lower()
     async with system_session() as s:
         if await s.scalar(select(User.id).where(User.email == email)):
             raise HTTPException(409, "email_taken")
-        user = User(email=email, password_hash=hash_password(body.password), full_name=body.full_name.strip(),
-                    last_login_at=datetime.now(UTC))
+    name = body.full_name.strip()
+    await redis.delete(_pending_key(email))
+    await redis.hset(_pending_key(email), mapping={"name": name, "password_hash": hash_password(body.password)})
+    await _send_signup_code(email, name)
+    return _pending_out(email)
+
+
+@router.post("/signup/resend")
+async def signup_resend(body: SignupResendIn, request: Request) -> dict:
+    email = body.email.lower()
+    if not await rate_limit(f"signup-resend:{email}", 5, 3600) or not await rate_limit(
+            f"signup-resend-ip:{_client_ip(request)}", 20, 3600):
+        raise HTTPException(429, "too_many_attempts")
+    pending = await redis.hgetall(_pending_key(email))
+    if not pending.get("name"):
+        raise HTTPException(400, "signup_expired")
+    if int(datetime.now(UTC).timestamp()) - int(pending.get("sent_at", 0)) < OTP_RESEND_SECONDS:
+        raise HTTPException(429, "too_many_attempts")
+    await _send_signup_code(email, pending["name"])
+    return _pending_out(email)
+
+
+@router.post("/signup/verify")
+async def signup_verify(body: SignupVerifyIn, request: Request, response: Response) -> dict:
+    """Step 2: the right code creates the account and signs the person in."""
+    email = body.email.lower()
+    if not await rate_limit(f"signup-verify-ip:{_client_ip(request)}", 30, 900):
+        raise HTTPException(429, "too_many_attempts")
+    key = _pending_key(email)
+    pending = await redis.hgetall(key)
+    if not pending.get("name") or not pending.get("code_hash"):
+        raise HTTPException(400, "signup_expired")
+    if await redis.hincrby(key, "attempts", 1) > OTP_MAX_ATTEMPTS:
+        await redis.delete(key)  # too many guesses: start over
+        raise HTTPException(400, "signup_expired")
+    if not hmac.compare_digest(pending["code_hash"], _otp_hash(email, body.code)):
+        raise HTTPException(400, "invalid_code")
+    if not await redis.delete(key):  # a concurrent request already used it
+        raise HTTPException(400, "signup_expired")
+    async with system_session() as s:
+        if await s.scalar(select(User.id).where(User.email == email)):
+            raise HTTPException(409, "email_taken")
+        user = User(email=email, password_hash=pending["password_hash"], full_name=pending["name"],
+                    email_verified=True, last_login_at=datetime.now(UTC))
         s.add(user)
         await s.flush()
         s.add(UserProfile(user_id=user.id))
@@ -131,7 +214,8 @@ async def signin(body: SigninIn, request: Request, response: Response) -> dict:
         if not user.is_active:
             raise HTTPException(403, "account_disabled")
         user.last_login_at = datetime.now(UTC)
-    asyncio.get_running_loop().create_task(ensure_room(user.id))
+    if user.role != "admin":  # admins have no assistant chat
+        asyncio.get_running_loop().create_task(ensure_room(user.id))
     return await _login(response, user)
 
 

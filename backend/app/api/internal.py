@@ -10,12 +10,11 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.cache import chat_channel, redis
-from app.core.crypto import decrypt
 from app.core.db import scoped_session, system_session
 from app.core.deps import require_internal
 from app.models import AgentRegistry, ChatMessage, ChatRoom, User, UserProfile, WatchCluster
 from app.services.notify import notify
-from app.services.omb import build_bulletin
+from app.services.omb import build_bulletin, room_member_key
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/internal", tags=["internal"], dependencies=[Depends(require_internal)])
@@ -30,9 +29,17 @@ class OmbMessage(BaseModel):
     final: bool = False
 
 
+class OmbStatus(BaseModel):
+    state: str = "idle"  # thinking | tool | writing | idle
+    thinking: str = ""
+    tool: str | None = None
+    sender: str = ""
+
+
 class OmbEvent(BaseModel):
     thread_id: str
-    message: OmbMessage
+    message: OmbMessage | None = None
+    status: OmbStatus | None = None  # live progress of the bot's turn; relayed, never stored
 
 
 _KEY_LEAK = re.compile(r"\b(?:[a-z]+-){4}\d{2}(?:-[a-z]+){3}\b")
@@ -43,7 +50,11 @@ async def omb_events(events: list[OmbEvent]) -> dict:
     """Bot replies in users' rooms, relayed from the OpenMausBot event stream."""
     handled = 0
     for ev in events:
-        if ev.message.role != "bot" or ev.message.kind not in ("text", "error") or not ev.message.text.strip():
+        if ev.status:
+            await _relay_status(ev.thread_id, ev.status)
+            handled += 1
+            continue
+        if not ev.message or ev.message.role != "bot" or ev.message.kind not in ("text", "error") or not ev.message.text.strip():
             continue
         is_error = ev.message.kind == "error"
         async with system_session() as s:
@@ -80,6 +91,16 @@ async def omb_events(events: list[OmbEvent]) -> dict:
     return {"handled": handled}
 
 
+async def _relay_status(thread_id: str, status: OmbStatus) -> None:
+    async with system_session() as s:
+        user_id = await s.scalar(select(ChatRoom.user_id).where(ChatRoom.omb_thread_id == thread_id))
+    if not user_id:
+        return
+    activity = {"state": status.state, "thinking": _KEY_LEAK.sub("•••", status.thinking[-2000:]),
+                "tool": status.tool, "sender": status.sender[:80]}
+    await redis.publish(chat_channel(str(user_id)), json.dumps({"type": "activity", "activity": activity}))
+
+
 @router.get("/agents/users")
 async def agent_users() -> list[dict]:
     """Every provisioned room, so the gateway can re-apply bots when SOUL files change."""
@@ -87,21 +108,25 @@ async def agent_users() -> list[dict]:
         rows = (await s.execute(
             select(ChatRoom, User, UserProfile).join(User, User.id == ChatRoom.user_id)
             .outerjoin(UserProfile, UserProfile.user_id == ChatRoom.user_id)
-            .where(ChatRoom.status == "ready", User.is_active.is_(True))
+            .where(ChatRoom.status == "ready", User.is_active.is_(True), User.role == "user")
         )).all()
-        return [{
-            "user_id": str(room.user_id), "room_id": room.omb_room_id, "soul_version": room.soul_version,
-            "display_name": user.full_name or user.email.split("@")[0],
-            "investment": bool(profile and profile.investment_opt_in),
-            "bulletin": build_bulletin(user, profile, decrypt(room.member_key_enc)),
-        } for room, user, profile in rows]
+        out = []
+        for room, user, profile in rows:
+            key = room_member_key(room)  # first: a new key clears soul_version so the gateway re-applies the room
+            out.append({
+                "user_id": str(room.user_id), "room_id": room.omb_room_id, "soul_version": room.soul_version,
+                "display_name": user.full_name or user.email.split("@")[0],
+                "investment": bool(profile and profile.investment_opt_in),
+                "bulletin": build_bulletin(user, profile, key),
+            })
+        return out
 
 
 @router.get("/agents/known-users")
 async def known_users() -> list[str]:
-    """Every existing account id; OMB teams for anyone else are orphans the gateway removes."""
+    """Every regular user id; OMB teams for anyone else (deleted users, admins) are orphans the gateway removes."""
     async with system_session() as s:
-        return [str(u) for u in (await s.execute(select(User.id))).scalars()]
+        return [str(u) for u in (await s.execute(select(User.id).where(User.role == "user"))).scalars()]
 
 
 class SoulVersionIn(BaseModel):

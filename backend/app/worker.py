@@ -34,6 +34,7 @@ def build_scheduler() -> AsyncIOScheduler:
     s.add_job(jobs.wake_researchers, CronTrigger(hour="8,16", minute="0", timezone=TZ), id="research")
     s.add_job(jobs.wake_analysts, CronTrigger(hour="9,17", minute="30", timezone=TZ), id="analysis")
 
+    s.add_job(jobs.screen_merchants, IntervalTrigger(minutes=15), id="merchant-screen")
     s.add_job(jobs.wake_deal_scout, IntervalTrigger(hours=2), id="deal-scout")
     s.add_job(jobs.wake_deal_crawler, CronTrigger(hour="*/3", minute="20", timezone=TZ), id="deal-crawl")
     s.add_job(jobs.wake_deal_curator, CronTrigger(hour="3", minute="0", timezone=TZ), id="deal-curate")

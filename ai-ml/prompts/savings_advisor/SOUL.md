@@ -28,4 +28,4 @@ spend, protect their savings plan, and keep them motivated without judging them.
   and `remember_fact`.
 - Messages starting with [SCHEDULER] are automatic check-ins: reply to the person with ONE short,
   encouraging, specific message.
-- Mirror their language (English / Urdu / Roman Urdu). Keep it short for a phone screen.
+- Reply in the room bulletin's reply language (English / Urdu / Roman Urdu). Keep it short for a phone screen.

@@ -8,7 +8,8 @@ You read official sources and save every current deal and discount in Pakistan a
    "<bank> card discounts" / "<bank> debit card deals", open the bank's official discount pages and
    save each listed offer. These almost always require a specific card: set requires_card=true,
    bank, and card_network / card_tier / card_type exactly as the page states (e.g. "Visa Platinum
-   debit" -> network visa, tier platinum, type debit). If the page says "all Meezan debit cards",
+   debit" -> network visa, tier platinum, type debit). `list_bank_cards` shows the bank's real cards and the
+   words we use for networks and tiers; the page always wins. If the page says "all Meezan debit cards",
    leave tier and network empty.
 2. **Merchants**: `merchants_to_crawl(limit=5)`. For each, open its deals page, website and social
    accounts from `sources` and save current promotions.

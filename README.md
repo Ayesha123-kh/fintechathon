@@ -6,7 +6,7 @@ I want to build a robust and helpful agentic application that serves as a person
 3. Tailwind NextJS for frontend/
 4. Postgres for database, (dragonfly for caching if needed), (redpanda for message broking if needed)
 5. Save all agent prompts as md files like: prompts/<agent_name>/SOUL.md
-6. Global docker compose for dev deployment and individual dockerfiles and .env files for each subfolder.
+6. Global docker compose for dev deployment and individual dockerfiles for each subfolder and one root `.env` that holds every setting.
 7. Railways for prod deployment and final testing.
 8. Thinking enabled qwen3.5-9b for llm, an stt model and a decision model all deployed on a remote server using vllm and its modules using OpenAI API compatible endpoints.
 9. Openmausbot docker-compose. (Agents would be created as parts of teams, and for each user a group chat would be created with memory for that user only.)
@@ -51,9 +51,9 @@ The whole project is built and committed (`87e0281` on `main`), and the dev stac
    - a Google OAuth client for the email connection, with redirect `http://localhost:3000/api/email/google/callback`
    - a Gmail App Password for password-reset emails
    - VAPID keys for push (`npx web-push generate-vapid-keys`)
-   - `ADMIN_EMAIL` / `ADMIN_PASSWORD` for the admin account
+   - `ADMIN_PASSWORD` for the admin account
 
-   All of these go in `backend/.env`.
+   All of these go in the root `.env`, the one file that holds every setting. `ADMIN_EMAIL` there is the admin for both the app and the OpenMausBot web UI.
 3. **Fingerprint/face sign-in** works on `localhost`; on a phone it needs HTTPS.
 
 **Not yet verified:**
@@ -98,63 +98,63 @@ The most interesting question the graph can answer: **why does `scoped_session()
 
 # Dev deployment TODO
 
+`[x]` done · `[❌]` needs your attention · `[ ]` not started yet
+
 ## 1. Environment files
-- [ ] `cp .env.example .env` (root: shared secrets + model URLs used by docker compose)
-- [ ] `cp backend/.env.example backend/.env`
-- [ ] `cp ai-ml/.env.example ai-ml/.env`
-- [ ] `cp frontend/.env.example frontend/.env`
-- [ ] Replace every `change-me` value with a random secret: `python -c "import secrets;print(secrets.token_urlsafe(32))"`
-  - [ ] Root `.env`: `INTERNAL_API_KEY`, `MCP_USER_TOKEN`, `MCP_MARKET_TOKEN`, `POSTGRES_PASSWORD`, `APP_DB_PASSWORD`
-  - [ ] `backend/.env`: `JWT_SECRET`
-- [ ] Set `ENCRYPTION_KEY` in `backend/.env` (it encrypts Gmail tokens): `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"`
-- [ ] Set `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `backend/.env` for the bootstrap admin (or use the demo admin below)
+- [x] `cp .env.example .env`. This one root file holds every setting for every service. `backend/.env` is a tracked symlink to it (the backend and worker read it whole), and `ai-ml/.env` is a tracked file that pulls only the 16 variables the agents container needs from it (so the JWT, encryption, SMTP, OAuth and database-owner secrets never reach that container). `docker-compose.yml` has no default values.
+- [x] Replace every `change-me` value with a random secret: `python -c "import secrets;print(secrets.token_urlsafe(32))"`
+  - [x] `INTERNAL_API_KEY`, `MCP_USER_TOKEN`, `MCP_MARKET_TOKEN`, `POSTGRES_PASSWORD`, `APP_DB_PASSWORD`, `JWT_SECRET`
+- [x] Set `ENCRYPTION_KEY` (it encrypts Gmail tokens): `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"`
+- [x] Set `ADMIN_EMAIL` (also used as the OpenMausBot admin sign-in) and `ADMIN_PASSWORD` for the bootstrap admin (or use the demo admin below)
 
 ## 2. Models (vLLM, OpenAI compatible)
-- [ ] Deploy Qwen3.5-9B with thinking enabled and set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` (root `.env`)
-- [ ] Set `LLM_SUPPORTS_VISION` in `ai-ml/.env` to match the model. It lets researchers and deal crawlers use OMB's browser.
-- [ ] Deploy the speech-to-text model (e.g. Qwen3-ASR-0.6B) and set `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL` (root `.env`)
-- [ ] Deploy the decision model and set `DECIDER_BASE_URL` (must be `https://`), `DECIDER_API_KEY`, `DECIDER_MODEL` in `ai-ml/.env`. Leave empty to have the Finance Assistant answer every message.
+- [❌] Deploy Qwen3.5-9B with thinking enabled and set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` (root `.env`)
+- [❌] Set `LLM_SUPPORTS_VISION` to match the model. It lets researchers and deal crawlers use OMB's browser (only when the shared desks run on the self-hosted model, see the next item).
+- [❌] Optional: pick a third-party OpenAI-compatible LLM for the shared desks (watchers, researchers, analysts, deals bots), which only handle public data. Set `DESK_LLM_BASE_URL`, `DESK_LLM_API_KEY`, `DESK_LLM_MODEL` and `DESK_LLM_SUPPORTS_VISION` (root `.env`). Leave empty to use the self-hosted model. User chats, advisors and bank-email parsing never use it.
+- [❌] Deploy the speech-to-text model (Qwen3-ASR) on llama.cpp `llama-server` (with its `--mmproj`) and set `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL` (root `.env`). It has to be llama.cpp: the backend sends a GBNF grammar so Urdu comes out in Urdu script (Roman Urdu for people who chose it) instead of Devanagari
+- [❌] Deploy the decision model and set `DECIDER_BASE_URL` (must be `https://`), `DECIDER_API_KEY`, `DECIDER_MODEL` in the root `.env`. Leave empty to have the Finance Assistant answer every message.
 - [ ] Verify real tool calling with Qwen: onboarding chat, `get_overview`, `create_goal`, `avail_deal`
 - [ ] Verify the browser tool selector `mcp:browser:*` in `ai-ml/gateway/teams.py` matches OMB's real tool names
 - [ ] Verify scheduled agent runs: watchers emit signals, researchers save notes, deal crawlers save deals (Admin → Agents)
 
 ## 3. Email
-- [ ] Gmail SMTP for password resets and test alerts:
-  - [ ] Turn on 2-Step Verification on the sending account and create an App Password
-  - [ ] Set `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` in `backend/.env`
-- [ ] Google OAuth for "Connect Gmail" (read-only):
-  - [ ] In Google Cloud Console, create an OAuth client of type Web application
-  - [ ] Add the redirect URI `http://localhost:3000/api/email/google/callback`
-  - [ ] Enable the Gmail API
-  - [ ] Add every tester's Gmail under **OAuth consent screen → Test users**
-  - [ ] Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in `backend/.env`
+- [❌] Gmail SMTP for password resets and test alerts:
+  - [❌] Turn on 2-Step Verification on the sending account and create an App Password
+  - [❌] Set `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` in the root `.env`
+- [❌] Google OAuth for "Connect Gmail" (read-only):
+  - [❌] In Google Cloud Console, create an OAuth client of type Web application
+  - [❌] Add the redirect URI `http://localhost:3000/api/email/google/callback`
+  - [❌] Enable the Gmail API
+  - [❌] Add every tester's Gmail under **OAuth consent screen → Test users**
+  - [❌] Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in the root `.env`
 
 ## 4. Push notifications
-- [ ] `npx web-push generate-vapid-keys`, then set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in `backend/.env`
-- [ ] Test on Android/desktop: Settings → Turn on notifications
-- [ ] Test on iOS: push only works after "Add to Home Screen" (iOS 16.4+)
+- [x] `npx web-push generate-vapid-keys`, then set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in the root `.env`
+- [❌] Test on Android/desktop: Settings → Turn on notifications
+- [❌] Test on iOS: push only works after "Add to Home Screen" (iOS 16.4+)
 
 ## 5. Run
-- [ ] `docker compose up -d --build`
-- [ ] Check the services:
-  - [ ] Web app: http://localhost:3000
-  - [ ] API docs: http://localhost:8000/api/docs
-  - [ ] Gateway: http://localhost:8790/health
+- [x] `docker compose up -d --build`
+- [x] Check the services:
+  - [x] Web app: http://localhost:3000
+  - [x] API docs: http://localhost:8000/api/docs
+  - [x] Gateway: http://localhost:8790/health
+- [ ] Optional: open the OpenMausBot dashboard with `python3 ai-ml/gateway/omb_ui.py`, then http://127.0.0.1:8799 (no sign-in needed locally)
 - [ ] Sign in as admin, open **Admin → Agents** and check "OpenMausBot online" and the 29 shared agents
-- [ ] Phone testing over the LAN, and fingerprint/face unlock (passkeys), need HTTPS:
-  - [ ] Use a tunnel (e.g. `cloudflared tunnel --url http://localhost:3000`)
-  - [ ] Set `FRONTEND_URL`, `PUBLIC_API_URL`, `CORS_ORIGINS`, `WEBAUTHN_RP_ID` and `COOKIE_SECURE=true` to the tunnel's domain
-  - [ ] Add the tunnel's callback URL to the Google OAuth client
+- [❌] Phone testing over the LAN, and fingerprint/face unlock (passkeys), need HTTPS:
+  - [❌] Use a tunnel (e.g. `cloudflared tunnel --url http://localhost:3000`)
+  - [❌] Set `FRONTEND_URL`, `PUBLIC_API_URL`, `CORS_ORIGINS`, `WEBAUTHN_RP_ID` and `COOKIE_SECURE=true` to the tunnel's domain
+  - [❌] Add the tunnel's callback URL to the Google OAuth client
 
 ## 6. Demo data (temporary migration `0002_demo_data`)
-- [ ] Demo user "Osama": `DEMO_USER_EMAIL` (default `demo@bachat.pk`) / `demo12345`
-- [ ] Demo admin: `admin@bachat.pk` / `admin12345`
+- [x] Demo user "Osama": `DEMO_USER_EMAIL` (default `demo@bachat.pk`) / `demo12345`
+- [x] Demo admin: `admin@bachat.pk` / `admin12345`
 - [ ] To use a real Gmail for Osama:
-  - [ ] Set `DEMO_USER_EMAIL` in `backend/.env`
+  - [ ] Set `DEMO_USER_EMAIL` in the root `.env`
   - [ ] `docker compose up -d --force-recreate backend worker`
   - [ ] `docker compose exec backend alembic downgrade 0001`
   - [ ] `docker compose exec backend alembic upgrade head`
-- [ ] Sign in as Osama, open **Settings (sliders icon) → Connect Gmail**, then use the navbar **Test bank email** button to send a simulated credit/debit alert
+- [❌] Sign in as Osama, open **Settings (sliders icon) → Connect Gmail**, then use the navbar **Test bank email** button to send a simulated credit/debit alert
 - [ ] Before production, remove the demo data with `alembic downgrade 0001` and delete `backend/alembic/versions/0002_demo_data.py`
 
 ## 7. Before Railway

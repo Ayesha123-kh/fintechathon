@@ -80,3 +80,101 @@ def test_simulated_alerts_parse_like_real_ones():
         assert parsed["last4"] == "4821"
         expected = 50000 - info["amount"] if direction == "debit" else 50000 + info["amount"]
         assert parsed["balance_after"] == expected
+
+
+class FakeSession:
+    """Just enough of an AsyncSession for record_transaction with a known account."""
+
+    def __init__(self, account):
+        self.account = account
+
+    async def scalar(self, _):
+        return None
+
+    async def get(self, model, _):
+        return {"BankAccount": self.account, "Category": object()}.get(model.__name__)
+
+    def add(self, _):
+        pass
+
+    async def flush(self):
+        pass
+
+
+def test_old_bank_alerts_do_not_change_a_stated_balance():
+    import asyncio
+    from datetime import UTC, datetime
+
+    from app.models import BankAccount
+    from app.services.finance import record_transaction
+
+    stated = datetime(2026, 10, 19, 10, 0, tzinfo=UTC)
+    acc = BankAccount(id=uuid.uuid4(), balance=Decimal(0), balance_as_of=stated)
+    s = FakeSession(acc)
+
+    async def tx(amount, direction, when, source="gmail", balance_after=None):
+        await record_transaction(s, uuid.uuid4(), amount=amount, direction=direction, occurred_at=when,
+                                 account_id=acc.id, category="misc", source=source, is_income=False,
+                                 balance_after=balance_after)
+
+    async def run():
+        await tx(150000, "debit", datetime(2026, 9, 23, tzinfo=UTC))  # already in the stated 0
+        assert acc.balance == Decimal(0)
+        await tx(500, "debit", datetime(2026, 10, 19, 12, 0, tzinfo=UTC))  # after it: applies
+        assert acc.balance == Decimal("-500.00")
+        await tx(1000, "credit", datetime(2026, 9, 1, tzinfo=UTC), source="chat")  # told in chat: always applies
+        assert acc.balance == Decimal("500.00")
+        await tx(200, "debit", datetime(2026, 10, 19, 13, 0, tzinfo=UTC), balance_after=9800)  # alert states it
+        assert acc.balance == Decimal("9800.00") and acc.balance_as_of == datetime(2026, 10, 19, 13, 0, tzinfo=UTC)
+        await tx(300, "debit", datetime(2026, 10, 19, 12, 30, tzinfo=UTC))  # older than that alert: counted
+        assert acc.balance == Decimal("9800.00")
+
+    asyncio.run(run())
+
+
+def test_merchant_names_from_real_alerts():
+    from app.services.gmail import find_merchant
+    from app.services.text import transaction_title
+
+    # NayaPay: the subject says it all; the body's "sent to this email" must never become the merchant.
+    assert find_merchant("You spent Rs. 375.44 at SHOPIFY* 608021774 SINGAPORE SG 💳", "sent to this email") == \
+        "Shopify Singapore"
+    assert find_merchant("You spent Rs. 5,924.29 at ANTHROPIC* CLAUDE SUB +14152360599 US 💳") == "Anthropic Claude SUB"
+    assert find_merchant("You sent Rs. 2,500 to Chainfore (Private) Limited 💸") == "Chainfore (Private) Limited"
+    assert find_merchant("You got Rs. 5,000 from Muhammad Osama Khan 🎉") == "Muhammad Osama Khan"
+    assert transaction_title(find_merchant("You subscribed to a mobile bundle of Rs. 1,700 📱"),
+                             "You subscribed to a mobile bundle of Rs. 1,700 📱") == "Mobile bundle"
+    assert transaction_title("", "Cash withdrawal of Rs. 2,000 🏧") == "Cash withdrawal"
+    # Meezan: the payee is in the details block; the footer's "contact us at 111-331-331" is not a name.
+    body = ("Dear Customer, PKR 150,000.00 sent from your account xxx3319 with the following details: "
+            "Beneficiary Account Title: : M.FAHEEM Branch : S.FAISAL COLONY KHI")
+    assert find_merchant("Debit Transaction Alert", body) == "M.Faheem"
+    assert find_merchant("", "PKR 8,000.00 received to your account xxx3319 with the following details: "
+                             "Beneficiary Account : ALFALAH-xxx9816 Branch : S.FAISAL") == "Alfalah"
+    assert find_merchant("Transaction Alert", "PKR 10,025.00 has been debited at 00:01 on 23-Sep-2026. Please "
+                                              "do not hesitate to contact us at 111-331-331 or visit") == ""
+
+
+def test_cards_must_exist_in_the_catalog():
+    from app.models import CardProduct
+    from app.services.cards import match_card
+
+    meezan = [CardProduct(name=n, network=net, tier=t, card_type="debit") for n, net, t in [
+        ("Meezan Mastercard Classic Debit Card", "mastercard", "classic"),
+        ("Meezan Mastercard Titanium Debit Card", "mastercard", "titanium"),
+        ("Meezan World Debit Card", "mastercard", "world"),
+        ("Meezan Visa Classic Debit Card", "visa", "classic"),
+        ("Meezan Visa Gold Debit Card", "visa", "gold"),
+        ("Meezan PayPak Debit Card", "paypak", "basic"),
+    ]]
+    # Exists: saved as the catalog card.
+    assert match_card(meezan, "visa", "debit", "Gold").product.name == "Meezan Visa Gold Debit Card"
+    assert match_card(meezan, "paypak", "debit", None).product.name == "Meezan PayPak Debit Card"
+    # "Mastercard Silver" doesn't exist: nothing saved, nearest real Mastercard first.
+    m = match_card(meezan, "mastercard", "debit", "silver")
+    assert m.product is None and m.closest[0].name == "Meezan Mastercard Classic Debit Card"
+    # No tier and several Mastercards: ask which one.
+    m = match_card(meezan, "mastercard", "debit", None)
+    assert m.product is None and len(m.options) == 3
+    # Meezan issues no credit cards in the catalog: suggest, never save.
+    assert match_card(meezan, "visa", "credit", "gold").product is None

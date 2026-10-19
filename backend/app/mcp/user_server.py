@@ -24,8 +24,10 @@ from app.models import (
     Bank,
     BankAccount,
     Card,
+    CardProduct,
     CoverageRequest,
     Deal,
+    DealRedemption,
     EmailConnection,
     Goal,
     MarketSignal,
@@ -38,11 +40,13 @@ from app.models import (
     UserProfile,
     WatchCluster,
 )
-from app.services import finance
+from app.services import deal_detect, finance
+from app.services.cards import match_card
 from app.services.deals import estimate_saving
 from app.services.deals import find_deals as find_deals_svc
 from app.services.notify import notify
 from app.services.omb import refresh_room, user_id_for_member_key
+from app.services.text import transaction_title
 
 mcp = FastMCP(
     "fin_user",
@@ -167,7 +171,9 @@ async def update_profile(
     per month (savings_value = PKR) or 'leftover' (whatever is unspent at month end). goal_split_mode decides
     how monthly savings are divided between simultaneous goals: equal, priority (1 = highest), custom
     (each goal's weight %) or deadline (what each goal needs per month to finish on time).
-    When income changes (e.g. an increment) ALSO call remember_fact so advice adapts."""
+    When income changes (e.g. an increment) ALSO call remember_fact so advice adapts.
+    language: set 'roman_ur' during onboarding once they answer in Urdu (any script); after that change it
+    only when the person explicitly asks for another language ('ur' = Urdu script, only on request)."""
     async with member(member_key) as (s, uid):
         p = await s.get(UserProfile, uid)
         changes = {k: v for k, v in {
@@ -273,6 +279,26 @@ async def list_banks(member_key: str) -> list[dict]:
         return [{"name": b.name, "short": b.short_name, "kind": b.kind} for b in banks]
 
 
+def _product_row(p: CardProduct) -> dict:
+    return {"name": p.name, "network": p.network, "tier": p.tier, "type": p.card_type, "islamic": p.is_islamic,
+            "confidence": p.confidence}
+
+
+@mcp.tool()
+async def list_card_products(member_key: str, bank: str, card_type: Literal["debit", "credit"] | None = None) -> list[dict]:
+    """The cards a bank issues (name, network, tier, debit/credit), from our catalog. Offer these when the person
+    adds a card so names and tiers stay consistent. 'confidence' is how sure we are the card still exists
+    (official > bank_site > weak); a null network means the bank's page did not say, so ask the person.
+    Only these cards can be saved with add_card; if the person names one that isn't listed, ask which of these
+    they mean."""
+    async with member(member_key) as (s, _):
+        b = await _bank_by_name(s, bank)
+        stmt = select(CardProduct).where(CardProduct.bank_id == b.id).order_by(CardProduct.card_type, CardProduct.name)
+        if card_type:
+            stmt = stmt.where(CardProduct.card_type == card_type)
+        return [_product_row(p) for p in (await s.execute(stmt)).scalars()]
+
+
 @mcp.tool()
 async def add_bank_account(member_key: str, bank: str, account_type: Literal["current", "savings", "wallet"] = "current",
                            balance: float | None = None, nickname: str = "", last4: str | None = None) -> dict:
@@ -281,6 +307,7 @@ async def add_bank_account(member_key: str, bank: str, account_type: Literal["cu
         b = await _bank_by_name(s, bank)
         count = await s.scalar(select(func.count()).select_from(BankAccount))
         acc = BankAccount(user_id=uid, bank_id=b.id, account_type=account_type, balance=balance or 0,
+                          balance_as_of=datetime.now(UTC) if balance is not None else None,
                           nickname=nickname or b.short_name, last4=last4, is_primary=count == 0)
         s.add(acc)
         await s.flush()
@@ -297,7 +324,7 @@ async def update_bank_account(member_key: str, account_id: str, balance: float |
         if not acc:
             raise ToolError("No such account.")
         if balance is not None:
-            acc.balance = balance
+            acc.balance, acc.balance_as_of = balance, datetime.now(UTC)
         if nickname is not None:
             acc.nickname = nickname
         if last4 is not None:
@@ -321,19 +348,34 @@ async def remove_bank_account(member_key: str, account_id: str) -> dict:
 @mcp.tool()
 async def add_card(member_key: str, bank: str, network: Literal["visa", "mastercard", "unionpay", "paypak", "amex"],
                    card_type: Literal["debit", "credit"] = "debit", tier: str | None = None) -> dict:
-    """Save a debit/credit card, e.g. 'Visa Silver debit card of Meezan Bank' -> bank='Meezan Bank',
-    network='visa', tier='silver', card_type='debit'. Cards decide which bank discounts apply.
+    """Save a debit/credit card, e.g. 'Visa Gold debit card of Meezan Bank' -> bank='Meezan Bank',
+    network='visa', tier='gold', card_type='debit'. Cards decide which bank discounts apply.
+    Only cards in our catalog of what each bank really issues can be saved. If it isn't one, nothing is saved and
+    you get `did_you_mean` (closest real cards) or `which_one` (several fit): ask the person, then call again with
+    the confirmed network / tier. Never save a card the person hasn't confirmed.
     Only the card TYPE is stored: never ask for or save any card digits (not even the last 4), CVV, PIN or OTP."""
     async with member(member_key) as (s, uid):
         b = await _bank_by_name(s, bank)
-        tier_txt = f" {tier.title()}" if tier else ""
-        label = f"{network.title()}{tier_txt} {card_type.title()} Card of {b.name}"
+        products = list((await s.execute(select(CardProduct).where(CardProduct.bank_id == b.id))).scalars())
+        m = match_card(products, network, card_type, tier)
+        asked = f"{network.title()}{f' {tier.title()}' if tier else ''} {card_type} card"
+        if m.options:
+            return {"ok": False, "saved": False, "which_one": [_product_row(p) for p in m.options],
+                    "ask": f"{b.name} has several {network.title()} {card_type} cards. Ask the person which one they "
+                           "have, then call add_card again with its tier."}
+        if not m.product:
+            return {"ok": False, "saved": False, "did_you_mean": [_product_row(p) for p in m.closest],
+                    "ask": f"{b.name} doesn't issue a {asked} as far as our catalog knows, so it was NOT saved. Ask "
+                           f"the person, e.g. \"Did you mean the {m.closest[0].name}?\"" if m.closest else
+                           f"We don't know any cards {b.name} issues, so it was NOT saved. Tell the person we can't "
+                           "add this card yet."}
+        p = m.product
         acc_id = await s.scalar(select(BankAccount.id).where(BankAccount.bank_id == b.id).limit(1))
-        card = Card(user_id=uid, bank_id=b.id, network=network, tier=(tier or None) and tier.lower(),
-                    card_type=card_type, label=label, account_id=acc_id)
+        card = Card(user_id=uid, bank_id=b.id, network=p.network or network, tier=p.tier, card_type=p.card_type,
+                    label=p.name, account_id=acc_id)
         s.add(card)
         await s.flush()
-        return {"ok": True, "card_id": str(card.id), "label": label}
+        return {"ok": True, "saved": True, "card_id": str(card.id), "label": card.label}
 
 
 @mcp.tool()
@@ -454,7 +496,7 @@ async def list_transactions(member_key: str, days: int = 30, category: str | Non
             stmt = stmt.where(Transaction.merchant_raw.ilike(f"%{merchant}%"))
         rows = (await s.execute(stmt.order_by(Transaction.occurred_at.desc()).limit(min(limit, 200)))).scalars()
         return out([{"id": t.id, "date": t.occurred_at, "amount": t.amount, "direction": t.direction,
-                     "merchant": t.merchant_raw, "category": t.category_slug, "source": t.source} for t in rows])
+                     "merchant": transaction_title(t.merchant_raw, t.description), "category": t.category_slug, "source": t.source} for t in rows])
 
 
 @mcp.tool()
@@ -502,12 +544,36 @@ async def find_deals(member_key: str, category: str | None = None, merchant: str
 
 
 @mcp.tool()
+async def offer_deal(member_key: str, deal_id: str) -> dict:
+    """Call this for EVERY deal you recommend to the person (deal_id from find_deals). It starts tracking: when a
+    debit at that merchant shows up in their bank alerts inside the deal's dates, on a card the deal accepts, the
+    saving is detected automatically, moved into their savings and they are congratulated. You don't need to ask
+    whether they used it or call avail_deal for those."""
+    async with member(member_key) as (s, uid):
+        deal = await s.get(Deal, uuid.UUID(deal_id))
+        if not deal or deal.status != "active":
+            raise ToolError("That deal is not active.")
+        offer = await deal_detect.record_offer(s, uid, deal.id)
+        return {"ok": True, "tracking": True, "merchant": deal.merchant_name, "offered_at": offer.offered_at,
+                "note": "Detected automatically from their bank alerts; offers count for up to "
+                        f"{deal_detect.OFFER_TTL_DAYS} days or until the deal ends."}
+
+
+@mcp.tool()
 async def avail_deal(member_key: str, amount_spent: float, deal_id: str | None = None,
                      amount_saved: float | None = None, goal_id: str | None = None) -> dict:
     """The person used a suggested discount. The amount saved is moved into their savings (to goal_id, or split
-    across goals). If amount_saved is omitted it is estimated from the deal terms."""
+    across goals). If amount_saved is omitted it is estimated from the deal terms. Not needed for deals you
+    offered with offer_deal and that were already detected automatically (this then reports it instead)."""
     async with member(member_key) as (s, uid):
         deal = await s.get(Deal, uuid.UUID(deal_id)) if deal_id else None
+        if deal:  # already counted from their bank alert in the last two days? don't save it twice
+            seen = await s.scalar(select(DealRedemption).where(
+                DealRedemption.deal_id == deal.id, DealRedemption.transaction_id.is_not(None),
+                DealRedemption.created_at >= datetime.now(UTC) - timedelta(days=2)).limit(1))
+            if seen:
+                return {"ok": True, "already_counted": True, "amount_saved": float(seen.amount_saved),
+                        "note": "This purchase was already detected from their bank alert and saved."}
         if amount_saved is None:
             if not deal:
                 raise ToolError("Give amount_saved or a deal_id to estimate it.")

@@ -81,7 +81,19 @@ def soul(prompt_dir: str) -> str:
 
 
 def model_ref() -> str:
+    """Model of the per-user teams: the self-hosted LLM, the only one that sees user data."""
     return f"{settings.instance_id}/{settings.llm_model}"
+
+
+def desk_model_ref() -> str:
+    """Model of the shared desks: the third-party LLM if configured, else the self-hosted one."""
+    if settings.desk_llm_enabled:
+        return f"{settings.desk_instance_id}/{settings.desk_llm_model}"
+    return model_ref()
+
+
+def desk_supports_vision() -> bool:
+    return settings.desk_llm_supports_vision if settings.desk_llm_enabled else settings.llm_supports_vision
 
 
 def _hash(*parts: str) -> str:
@@ -95,7 +107,7 @@ def _hash(*parts: str) -> str:
 # ---------------------------------------------------------------------------- shared desks
 
 def shared_bots(clusters: list[dict]) -> list[BotSpec]:
-    browse = settings.llm_supports_vision
+    browse = desk_supports_vision()
     bots: list[BotSpec] = []
     def tools(lead: bool = False, browser: bool = False) -> tuple[str, ...]:
         return (*(LEAD_TOOLS if lead else DESK_TOOLS), *(BROWSER_TOOLS if browser and browse else ()))
@@ -138,7 +150,7 @@ def shared_team_doc(bots: list[BotSpec]) -> dict:
                            "until when, whether it needs a specific bank card, the city and the type of place. "
                            "Users' private Deals Advisors read it through their own tools. Only save deals you "
                            "actually saw on a source page.")
-    return _doc(bots, teams, prune=True)
+    return _doc(bots, teams, prune=True, model=desk_model_ref())
 
 
 # ---------------------------------------------------------------------------- per-user teams
@@ -154,7 +166,10 @@ def user_names(user_id: str) -> dict[str, str]:
 
 
 def user_soul_version() -> str:
-    return _hash(CATALOG_VERSION, model_ref(), *[soul(p) for _, p, _, _ in USER_BOTS])
+    # The decision model is part of the version: switching it on or off must re-apply every room, because the
+    # "auto" responder is only set when a team is applied.
+    return _hash(CATALOG_VERSION, model_ref(), "decider" if settings.decider_base_url else "no-decider",
+                 *[soul(p) for _, p, _, _ in USER_BOTS])
 
 
 def user_team_doc(user_id: str, display_name: str, bulletin: str, investment: bool) -> tuple[dict, dict]:
@@ -180,10 +195,10 @@ def user_team_doc(user_id: str, display_name: str, bulletin: str, investment: bo
 
 # ---------------------------------------------------------------------------- yaml + apply
 
-def _doc(bots: list[BotSpec], teams: dict[str, str], prune: bool) -> dict:
+def _doc(bots: list[BotSpec], teams: dict[str, str], prune: bool, model: str | None = None) -> dict:
     return {
         "version": 1,
-        "defaults": {"model": model_ref(), "approval": "full", "computer": "off", "browser": False},
+        "defaults": {"model": model or model_ref(), "approval": "full", "computer": "off", "browser": False},
         "teams": [{"name": name, "brief": brief, "prune": prune} for name, brief in teams.items()],
         "bots": [_bot_yaml(b) for b in bots],
     }

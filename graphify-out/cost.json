@@ -5,8 +5,22 @@
       "input_tokens": 123211,
       "output_tokens": 0,
       "files": 122
+    },
+    {
+      "date": "2026-10-18T13:48:43.907663+00:00",
+      "input_tokens": 132865,
+      "output_tokens": 0,
+      "files": 132,
+      "note": "total subagent tokens, in+out combined"
+    },
+    {
+      "date": "2026-10-18T17:26:53.454131+00:00",
+      "input_tokens": 65162,
+      "output_tokens": 0,
+      "files": 26,
+      "note": "update: 26 changed files; subagent tokens in+out combined"
     }
   ],
-  "total_input_tokens": 123211,
+  "total_input_tokens": 321238,
   "total_output_tokens": 0
 }

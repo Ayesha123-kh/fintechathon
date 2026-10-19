@@ -6,8 +6,8 @@ from sqlalchemy.dialects.postgresql import insert
 from app.core.config import settings
 from app.core.db import system_session
 from app.core.security import hash_password
-from app.models import AssetClass, Bank, Category, Merchant, Plan, User, UserProfile, WatchCluster
-from app.seed import data
+from app.models import AssetClass, Bank, CardProduct, Category, Merchant, Plan, User, WatchCluster
+from app.seed import cards, data
 from app.services.text import normalize_name
 
 log = logging.getLogger(__name__)
@@ -44,6 +44,19 @@ async def load_reference_data() -> None:
                 .values(asset_class=asset_class, slug=slug, name=name, description=desc, symbols=symbols)
                 .on_conflict_do_nothing(index_elements=["slug"])
             )
+        await s.flush()
+        banks = {b.short_name: b.id for b in (await s.execute(select(Bank))).scalars()}
+        for short, name, network, tier, card_type, islamic, confidence, url in cards.CARD_PRODUCTS:
+            if short not in banks:
+                log.warning("card %r skipped: unknown bank %r", name, short)
+                continue
+            values = dict(bank_id=banks[short], name=name, network=network, tier=tier, card_type=card_type,
+                          is_islamic=islamic, confidence=confidence, source_url=url, verified_on=cards.VERIFIED_ON)
+            await s.execute(
+                insert(CardProduct).values(**values)
+                .on_conflict_do_update(constraint="uq_card_products_bank_name",
+                                       set_={k: v for k, v in values.items() if k not in ("bank_id", "name")})
+            )
         for name, category, sub in data.SEED_MERCHANTS:
             await s.execute(
                 insert(Merchant)
@@ -69,7 +82,5 @@ async def ensure_admin() -> None:
             return
         user = User(email=email, password_hash=hash_password(settings.admin_password), full_name="Admin",
                     role="admin", email_verified=True, onboarding_completed=True)
-        s.add(user)
-        await s.flush()
-        s.add(UserProfile(user_id=user.id))
+        s.add(user)  # admins are not users: no profile, plan or assistant chat
         log.info("created bootstrap admin %s", email)

@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.deps import Principal, current_principal, own_db
+from app.core.deps import Principal, own_db, user_principal
 from app.models import EmailConnection, IngestedEmail
 from app.services import gmail
 
@@ -27,7 +27,7 @@ async def connections(s: AsyncSession = Depends(own_db)) -> dict:
 
 
 @router.post("/google/start")
-async def google_start(p: Principal = Depends(current_principal)) -> dict:
+async def google_start(p: Principal = Depends(user_principal)) -> dict:
     if not settings.google_client_id:
         raise HTTPException(503, "gmail_not_configured")
     return {"url": gmail.auth_url(p.user_id)}
@@ -51,7 +51,7 @@ async def google_callback(request: Request, code: str | None = None, state: str 
 
 
 @router.post("/connections/{conn_id}/sync")
-async def sync_now(conn_id: uuid.UUID, p: Principal = Depends(current_principal)) -> dict:
+async def sync_now(conn_id: uuid.UUID, p: Principal = Depends(user_principal)) -> dict:
     created = await gmail.sync_connection(conn_id, p.user_id)
     return {"ok": True, "new_transactions": created}
 
