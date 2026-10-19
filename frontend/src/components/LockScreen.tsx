@@ -83,6 +83,7 @@ export function LockScreen({
             type="password"
             name="password"
             autoComplete="current-password"
+            maxLength={128}
             label={canBio ? "Or use your password" : "Password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}

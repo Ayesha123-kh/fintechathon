@@ -7,6 +7,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 import useSWR from "swr";
 import { api, errorText, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { CHAT_TEXT_MAX, VOICE_MAX_BYTES, VOICE_MAX_SECONDS, VOICE_MIN_SECONDS } from "@/lib/limits";
 import { recordWav, type WavRecorder } from "@/lib/wav";
 import { UserPhoto, useMyAvatar } from "./Avatar";
 
@@ -95,6 +96,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const readAtRef = useRef<string | null>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
   const recorder = useRef<WavRecorder | null>(null);
+  const recordStartedAt = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
@@ -262,17 +264,24 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
       recorder.current = null;
       setRecording(false);
       if (!rec) return;
-      setTranscribing(true);
       setError("");
+      if ((Date.now() - recordStartedAt.current) / 1000 < VOICE_MIN_SECONDS) {
+        rec.cancel();
+        setError("That was too short. Hold the mic a little longer.");
+        return;
+      }
+      setTranscribing(true);
       try {
+        const wav = await rec.stop();
+        if (wav.size > VOICE_MAX_BYTES) throw new Error("too_long");
         const form = new FormData();
-        form.append("audio", await rec.stop(), "voice.wav");
+        form.append("audio", wav, "voice.wav");
         const res = await api<{ text: string }>("/chat/transcribe", { method: "POST", body: form });
         // Not sent: it goes into the message box (after anything typed meanwhile) to check and edit first.
-        setText((t) => (t.trim() ? `${t.trimEnd()} ${res.text}` : res.text));
+        setText((t) => (t.trim() ? `${t.trimEnd()} ${res.text}` : res.text).slice(0, CHAT_TEXT_MAX));
         setHeard((n) => n + 1);
       } catch (e) {
-        setError(errorText(e));
+        setError(e instanceof Error && e.message === "too_long" ? `Voice notes can be up to ${VOICE_MAX_SECONDS} seconds.` : errorText(e));
       } finally {
         setTranscribing(false);
       }
@@ -280,11 +289,30 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     }
     try {
       recorder.current = await recordWav();
+      recordStartedAt.current = Date.now();
       setRecording(true);
     } catch {
       setError("Microphone permission is needed for voice messages.");
     }
   };
+  const toggleRef = useRef(toggleRecording);
+  toggleRef.current = toggleRecording;
+
+  // Voice notes stop by themselves at the limit (the server refuses longer ones); the timer shows how long is left.
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!recording) return;
+    setElapsed(0);
+    const timer = setInterval(() => {
+      const seconds = (Date.now() - recordStartedAt.current) / 1000;
+      setElapsed(seconds);
+      if (seconds >= VOICE_MAX_SECONDS) {
+        clearInterval(timer);
+        toggleRef.current();
+      }
+    }, 200);
+    return () => clearInterval(timer);
+  }, [recording]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -498,12 +526,18 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                     }
                   }}
                   rows={1}
+                  maxLength={CHAT_TEXT_MAX}
                   disabled={waiting}
-                  placeholder={recording ? "Listening… tap stop when done" : transcribing ? "Turning your voice into text…"
+                  placeholder={recording ? `Listening… up to ${VOICE_MAX_SECONDS} s, tap stop when done` : transcribing ? "Turning your voice into text…"
                     : waiting ? "Waiting for a reply…" : "Type a message"}
                   aria-label="Message"
                   className="max-h-36 min-h-12 flex-1 resize-none rounded-3xl border border-line bg-bg px-5 py-3 text-[15px] text-ink outline-none placeholder:text-muted focus:border-forest disabled:opacity-60"
                 />
+                {recording && (
+                  <span className="tabular shrink-0 self-center text-sm font-semibold text-danger" aria-live="off">
+                    {clockLabel(elapsed)} / {clockLabel(VOICE_MAX_SECONDS)}
+                  </span>
+                )}
                 {text.trim() && !recording && !transcribing ? (
                   <button type="submit" aria-label="Send" disabled={waiting} className="grid size-12 shrink-0 place-items-center rounded-full bg-forest text-forest-ink transition hover:brightness-110 active:scale-95 disabled:opacity-60">
                     <Send className="size-5" />
@@ -513,7 +547,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                     type="button"
                     onClick={toggleRecording}
                     disabled={(waiting && !recording) || transcribing}
-                    aria-label={recording ? "Stop recording" : transcribing ? "Transcribing" : "Record a voice message"}
+                    aria-label={recording ? "Stop recording" : transcribing ? "Transcribing" : `Record a voice message (up to ${VOICE_MAX_SECONDS} seconds)`}
                     className={clsx(
                       "grid size-12 shrink-0 place-items-center rounded-full transition active:scale-95 disabled:opacity-60",
                       recording ? "animate-pulse bg-danger text-white" : "bg-forest text-forest-ink hover:brightness-110",
@@ -545,6 +579,11 @@ function isAfter(when: string | null, ref: string) {
   return !!when && new Date(when).getTime() > new Date(ref).getTime();
 }
 
+/** 12.4 -> "0:12" */
+const clockLabel = (seconds: number) => {
+  const s = Math.min(Math.floor(seconds), VOICE_MAX_SECONDS);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
 const dayKey = (d: string | null) => (d ? new Date(d).toDateString() : "");
 const time = (d: string | null) => (d ? new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "");
 function dayLabel(d: string) {

@@ -65,7 +65,7 @@ class SignupResendIn(BaseModel):
 
 class SigninIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=128)  # Argon2 on an unbounded input is a CPU sink
 
 
 class ForgotIn(BaseModel):
@@ -73,12 +73,12 @@ class ForgotIn(BaseModel):
 
 
 class ResetIn(BaseModel):
-    token: str
+    token: str = Field(max_length=128)
     password: str = Field(min_length=8, max_length=128)
 
 
 class UnlockIn(BaseModel):
-    password: str
+    password: str = Field(max_length=128)
 
 
 def _client_ip(request: Request) -> str:
@@ -343,7 +343,7 @@ async def passkey_register_options(p: Principal = Depends(current_principal)) ->
 
 class PasskeyVerifyIn(BaseModel):
     credential: dict
-    device_name: str = "This device"
+    device_name: str = Field(default="This device", max_length=120)
 
 
 @router.post("/webauthn/register/verify")
@@ -398,7 +398,7 @@ async def passkey_auth_options(body: PasskeyLoginOptionsIn, request: Request) ->
 
 class PasskeyAuthIn(BaseModel):
     credential: dict
-    challenge: str
+    challenge: str = Field(max_length=256)
 
 
 @router.post("/webauthn/verify")
