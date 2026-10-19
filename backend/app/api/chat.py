@@ -88,18 +88,23 @@ async def send(body: SendIn, p: Principal = Depends(user_principal)) -> dict:
     return await _send(p.user_id, body.text.strip())
 
 
-@router.post("/voice")
-async def voice(audio: UploadFile = File(...), p: Principal = Depends(user_principal)) -> dict:
+@router.post("/transcribe")
+async def transcribe_voice(audio: UploadFile = File(...), p: Principal = Depends(user_principal)) -> dict:
+    """Speech to text only: the app puts the text in the message box for the person to edit and send."""
     data = await audio.read()
     if len(data) > 15 * 1024 * 1024:
         raise HTTPException(413, "audio_too_large")
+    if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise HTTPException(415, "audio_must_be_wav")
+    async with scoped_session(p.user_id, "user") as s:
+        profile = await s.get(UserProfile, p.user_id)
     try:
-        text = await transcribe(audio.filename or "voice.webm", data, audio.content_type or "audio/webm")
+        text = await transcribe(data, urdu_script=bool(profile and profile.language == "ur"))
     except Exception as exc:
         raise HTTPException(503, f"speech_to_text_unavailable: {exc}") from exc
     if not text:
         raise HTTPException(422, "could_not_understand_audio")
-    return await _send(p.user_id, text)
+    return {"text": text}
 
 
 @router.get("/stream")

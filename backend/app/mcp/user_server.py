@@ -171,7 +171,9 @@ async def update_profile(
     per month (savings_value = PKR) or 'leftover' (whatever is unspent at month end). goal_split_mode decides
     how monthly savings are divided between simultaneous goals: equal, priority (1 = highest), custom
     (each goal's weight %) or deadline (what each goal needs per month to finish on time).
-    When income changes (e.g. an increment) ALSO call remember_fact so advice adapts."""
+    When income changes (e.g. an increment) ALSO call remember_fact so advice adapts.
+    language: set 'roman_ur' during onboarding once they answer in Urdu (any script); after that change it
+    only when the person explicitly asks for another language ('ur' = Urdu script, only on request)."""
     async with member(member_key) as (s, uid):
         p = await s.get(UserProfile, uid)
         changes = {k: v for k, v in {

@@ -4,6 +4,7 @@ Agents run inside OpenMausBot; the backend only uses the LLM for small structure
 (email transaction extraction, merchant categorisation) and speech-to-text.
 """
 
+import base64
 import json
 import logging
 import re
@@ -64,8 +65,23 @@ async def complete_json(system: str, user: str, max_tokens: int = 800) -> dict[s
         return None
 
 
-async def transcribe(filename: str, data: bytes, content_type: str) -> str:
-    resp = await stt.audio.transcriptions.create(
-        model=settings.stt_model, file=(filename, data, content_type)
+# Qwen3-ASR has no Urdu: Urdu speech comes back tagged "Hindi" and written in Devanagari, whichever
+# language the prompt asks for. It answers "language X<asr_text>the words", so a grammar (llama.cpp)
+# keeps English in Latin letters and makes Hindi/Urdu come out in Roman Urdu (or Urdu script).
+_LATIN = r"[\x20-\x7E\n]*"
+_URDU = r"[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF0-9 \n]*"  # Arabic-script letters, Urdu punctuation
+
+
+async def transcribe(wav: bytes, urdu_script: bool = False) -> str:
+    seconds = (len(wav) - 44) / max(1, int.from_bytes(wav[28:32], "little"))  # WAV header byte rate
+    urdu = _URDU if urdu_script else _LATIN
+    resp = await stt.chat.completions.create(
+        model=settings.stt_model,
+        messages=[{"role": "user", "content": [
+            {"type": "input_audio", "input_audio": {"data": base64.b64encode(wav).decode(), "format": "wav"}},
+        ]}],
+        temperature=0,
+        max_tokens=64 + int(seconds * 15),  # a constrained decode can start repeating itself
+        extra_body={"grammar": f'root ::= "language " ("English<asr_text>" {_LATIN} | ("Hindi" | "Urdu") "<asr_text>" {urdu})'},
     )
-    return (resp.text or "").strip()
+    return (resp.choices[0].message.content or "").split("<asr_text>")[-1].strip()

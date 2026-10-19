@@ -111,7 +111,7 @@ The most interesting question the graph can answer: **why does `scoped_session()
 - [❌] Deploy Qwen3.5-9B with thinking enabled and set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` (root `.env`)
 - [❌] Set `LLM_SUPPORTS_VISION` to match the model. It lets researchers and deal crawlers use OMB's browser (only when the shared desks run on the self-hosted model, see the next item).
 - [❌] Optional: pick a third-party OpenAI-compatible LLM for the shared desks (watchers, researchers, analysts, deals bots), which only handle public data. Set `DESK_LLM_BASE_URL`, `DESK_LLM_API_KEY`, `DESK_LLM_MODEL` and `DESK_LLM_SUPPORTS_VISION` (root `.env`). Leave empty to use the self-hosted model. User chats, advisors and bank-email parsing never use it.
-- [❌] Deploy the speech-to-text model (e.g. Qwen3-ASR-0.6B) and set `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL` (root `.env`)
+- [❌] Deploy the speech-to-text model (Qwen3-ASR) on llama.cpp `llama-server` (with its `--mmproj`) and set `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL` (root `.env`). It has to be llama.cpp: the backend sends a GBNF grammar so Urdu comes out in Urdu script (Roman Urdu for people who chose it) instead of Devanagari
 - [❌] Deploy the decision model and set `DECIDER_BASE_URL` (must be `https://`), `DECIDER_API_KEY`, `DECIDER_MODEL` in the root `.env`. Leave empty to have the Finance Assistant answer every message.
 - [ ] Verify real tool calling with Qwen: onboarding chat, `get_overview`, `create_goal`, `avail_deal`
 - [ ] Verify the browser tool selector `mcp:browser:*` in `ai-ml/gateway/teams.py` matches OMB's real tool names

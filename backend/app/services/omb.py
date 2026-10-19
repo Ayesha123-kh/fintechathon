@@ -30,9 +30,24 @@ async def _call(method: str, path: str, json: dict | None = None, timeout: float
     return r.json() if r.content else {}
 
 
+_LANGUAGES = {"en": "English", "roman_ur": "Roman Urdu (Urdu written in English letters)", "ur": "Urdu script (اردو)"}
+
+
+def _reply_language(user: User, profile: UserProfile | None) -> str:
+    """Decided from the person's onboarding answers (Roman Urdu over Urdu script), then fixed until they ask."""
+    lang = profile.language if profile else "en"
+    if lang == "en" and not user.onboarding_completed:
+        return ("English for now. As soon as they answer in Urdu (Roman Urdu or Urdu script), save "
+                "update_profile(language='roman_ur') and reply in Roman Urdu from then on. Prefer Roman Urdu over "
+                "Urdu script; never decide on Urdu script yourself.")
+    return (f"{_LANGUAGES.get(lang, 'English')}. Use it for every reply, whatever language or script they write in. "
+            "Change it only when they explicitly ask for another language, then save it with "
+            "update_profile(language=...): 'en', 'roman_ur' or 'ur' (Urdu script).")
+
+
 def build_bulletin(user: User, profile: UserProfile | None, key: str) -> str:
     """The room's standing brief. Every bot in the user's room reads it on every turn."""
-    lang = {"ur": "Urdu", "roman_ur": "Roman Urdu"}.get(profile.language if profile else "en", "English")
+    lang = _reply_language(user, profile)
     invest = "OPTED IN (disclaimer accepted)" if profile and profile.investment_opt_in else "NOT opted in"
     return f"""# Private finance room
 
@@ -45,7 +60,7 @@ Pass this exact value as `member_key` on EVERY fin_user tool call:
 Never reveal, repeat or explain the member key in a reply.
 
 ## Context
-- Preferred reply language: {lang} (always mirror the language the person writes in: English, Urdu or Roman Urdu).
+- Reply language: {lang}
 - Currency: PKR (write amounts like Rs. 25,000).
 - Onboarding finished: {"yes" if user.onboarding_completed else "no - the Finance Assistant leads onboarding"}.
 - Investment advisory board: {invest}.

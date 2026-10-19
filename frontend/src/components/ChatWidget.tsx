@@ -3,11 +3,12 @@
 import clsx from "clsx";
 import { Bell, Loader2, Mail, MessageCircle, Mic, Send, ShieldCheck, Square, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { DropTail } from "./DropTail";
 import { api, errorText, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { recordWav, type WavRecorder } from "@/lib/wav";
 
 type Msg = { id: string; role: "user" | "bot" | "system"; sender: string; text: string; kind?: string; final: boolean; created_at: string | null };
 // Live progress of the assistant's turn: what it is thinking and which tool it is using. Never stored.
@@ -38,6 +39,9 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const [status, setStatus] = useState<string>("pending");
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  // Bumped when a voice transcript lands in the message box, to focus it for editing.
+  const [heard, setHeard] = useState(0);
   const [unread, setUnread] = useState(0);
   // Latest message that arrived while the chat was closed, shown as a bubble next to the chat button.
   const [preview, setPreview] = useState<Msg | null>(null);
@@ -90,7 +94,8 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const [readAt, setReadAt] = useState<string | null>(null);
   const readAtRef = useRef<string | null>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
-  const recorder = useRef<MediaRecorder | null>(null);
+  const recorder = useRef<WavRecorder | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
   openRef.current = open;
@@ -249,37 +254,53 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     }
   }, [waiting, refreshEmail]);
 
+  // Release the microphone if the widget goes away mid-recording.
+  useEffect(() => () => recorder.current?.cancel(), []);
+
   const toggleRecording = async () => {
     if (recording) {
-      recorder.current?.stop();
+      const rec = recorder.current;
+      recorder.current = null;
+      setRecording(false);
+      if (!rec) return;
+      setTranscribing(true);
+      setError("");
+      try {
+        const form = new FormData();
+        form.append("audio", await rec.stop(), "voice.wav");
+        const res = await api<{ text: string }>("/chat/transcribe", { method: "POST", body: form });
+        // Not sent: it goes into the message box (after anything typed meanwhile) to check and edit first.
+        setText((t) => (t.trim() ? `${t.trimEnd()} ${res.text}` : res.text));
+        setHeard((n) => n + 1);
+      } catch (e) {
+        setError(errorText(e));
+      } finally {
+        setTranscribing(false);
+      }
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-      rec.ondataavailable = (e) => chunks.push(e.data);
-      rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        setRecording(false);
-        const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
-        const form = new FormData();
-        form.append("audio", blob, `voice.${(rec.mimeType || "audio/webm").includes("mp4") ? "m4a" : "webm"}`);
-        setWaiting(true);
-        try {
-          await api("/chat/voice", { method: "POST", body: form });
-        } catch (e) {
-          setWaiting(false);
-          setError(errorText(e));
-        }
-      };
-      recorder.current = rec;
-      rec.start();
+      recorder.current = await recordWav();
       setRecording(true);
     } catch {
       setError("Microphone permission is needed for voice messages.");
     }
   };
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!heard || !el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [heard]);
+
+  // Grow the message box with its text (up to max-h-32), so a transcript can be read and edited in place.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  }, [text, open]);
 
   const suggestions = user?.onboarding_completed ? SUGGESTIONS : SUGGESTIONS_NEW;
 
@@ -426,6 +447,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
               className="flex items-end gap-2 border-t border-line px-3 py-3"
             >
               <textarea
+                ref={inputRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
@@ -436,11 +458,12 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                 }}
                 rows={1}
                 disabled={waiting}
-                placeholder={recording ? "Listening… tap stop when done" : waiting ? "Waiting for a reply…" : "Message your assistant"}
+                placeholder={recording ? "Listening… tap stop when done" : transcribing ? "Turning your voice into text…"
+                  : waiting ? "Waiting for a reply…" : "Message your assistant"}
                 aria-label="Message"
                 className="max-h-32 min-h-11 flex-1 resize-none rounded-3xl border border-line bg-surface-2 px-4 py-2.5 text-[15px] outline-none focus:border-forest disabled:opacity-60"
               />
-              {text.trim() ? (
+              {text.trim() && !recording && !transcribing ? (
                 <button type="submit" aria-label="Send" disabled={waiting} className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-ink disabled:opacity-60">
                   <Send className="size-5" />
                 </button>
@@ -448,14 +471,15 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                 <button
                   type="button"
                   onClick={toggleRecording}
-                  disabled={waiting && !recording}
-                  aria-label={recording ? "Stop recording" : "Record a voice message"}
+                  disabled={(waiting && !recording) || transcribing}
+                  aria-label={recording ? "Stop recording" : transcribing ? "Transcribing" : "Record a voice message"}
                   className={clsx(
                     "grid size-11 shrink-0 place-items-center rounded-full disabled:opacity-60",
                     recording ? "animate-pulse bg-danger text-white" : "bg-forest text-forest-ink",
                   )}
                 >
-                  {recording ? <Square className="size-4" /> : <Mic className="size-5" />}
+                  {recording ? <Square className="size-4" />
+                    : transcribing ? <Loader2 className="size-5 animate-spin" /> : <Mic className="size-5" />}
                 </button>
               )}
             </form>
