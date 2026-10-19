@@ -80,12 +80,16 @@ export function ProgressRing({
   thickness = 8,
   label,
   children,
+  trackClassName = "stroke-chart-track",
+  barClassName = "stroke-chart-save",
 }: {
   value: number;
   size?: number;
   thickness?: number;
   label: string;
   children?: React.ReactNode;
+  trackClassName?: string;
+  barClassName?: string;
 }) {
   const pct = Math.max(0, Math.min(1, value));
   const r = (size - thickness) / 2;
@@ -94,10 +98,10 @@ export function ProgressRing({
     <div className="relative shrink-0" style={{ width: size, height: size }} role="progressbar"
       aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct * 100)}>
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90" aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={thickness} className="stroke-chart-track" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={thickness} className={trackClassName} />
         {pct > 0 && (
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={thickness} strokeLinecap="round"
-            strokeDasharray={`${pct * c} ${c}`} className="stroke-chart-save transition-[stroke-dasharray] duration-700" />
+            strokeDasharray={`${pct * c} ${c}`} className={clsx(barClassName, "transition-[stroke-dasharray] duration-700")} />
         )}
       </svg>
       <div className="absolute inset-0 grid place-items-center">
@@ -125,42 +129,41 @@ export function SplitDonut({ savings, expendable, size = 120, thickness = 14, la
   );
 }
 
-export function SplitLegend() {
-  return (
-    <div className="flex gap-4 text-xs text-ink-2">
-      <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-save" />Savings</span>
-      <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-chart-spend ring-1 ring-forest/30" />Spendable</span>
-    </div>
-  );
-}
+const CAT_BG = ["bg-cat-1", "bg-cat-2", "bg-cat-3", "bg-cat-4", "bg-cat-5"];
 
-/** Sorted horizontal bars for one measure (magnitude) in a single hue, with direct value labels. */
-export function CategoryBars({ rows }: { rows: { category: string; name: string; amount: number | string }[] }) {
-  const max = Math.max(...rows.map((r) => Number(r.amount)), 1);
-  const total = rows.reduce((a, r) => a + Number(r.amount), 0);
-  const [hover, setHover] = useState<string>("");
+/**
+ * One bar split into the month's categories (largest first, five palette colours), then a legend with each
+ * category's amount. Categories past the fifth are folded into "Other" so every colour stays distinct.
+ */
+export function CategoryStack({ rows }: { rows: { category: string; name: string; amount: number | string }[] }) {
+  const sorted = rows.map((r) => ({ ...r, value: Number(r.amount) })).filter((r) => r.value > 0).sort((a, b) => b.value - a.value);
+  const shown = sorted.length > 5
+    ? [...sorted.slice(0, 4), { category: "_other", name: "Other", amount: 0, value: sorted.slice(4).reduce((a, r) => a + r.value, 0) }]
+    : sorted;
+  const total = shown.reduce((a, r) => a + r.value, 0);
+  const [hover, setHover] = useState("");
+  if (!total) return null;
   return (
-    <ul className="space-y-3">
-      {rows.map((r) => {
-        const v = Number(r.amount);
-        return (
-          <li key={r.category} className="relative" onPointerEnter={() => setHover(r.category)} onPointerLeave={() => setHover("")}>
-            <div className="mb-1 flex justify-between text-sm">
-              <span className="text-ink-2">{r.name}</span>
-              <span className="tabular font-semibold">{rs(v)}</span>
-            </div>
-            <div className="h-2.5 w-full rounded-full bg-chart-track">
-              <div className={clsx("h-full rounded-full bg-chart-save transition-[width] duration-700", hover && hover !== r.category && "opacity-50")}
-                style={{ width: `${(v / max) * 100}%` }} />
-            </div>
-            {hover === r.category && (
-              <div className="pointer-events-none absolute -top-8 right-0 rounded-xl bg-ink px-3 py-1.5 text-xs text-surface">
-                {Math.round((v / total) * 100)}% of this month&apos;s spending
-              </div>
-            )}
+    <div>
+      <div className="flex h-4 gap-1" role="img"
+        aria-label={shown.map((r) => `${r.name} ${rs(r.value)}`).join(", ")}>
+        {shown.map((r, i) => (
+          <div key={r.category} title={`${r.name}: ${rs(r.value)} (${Math.round((r.value / total) * 100)}%)`}
+            className={clsx("h-full rounded-[3px] transition-opacity first:rounded-l-full last:rounded-r-full", CAT_BG[i],
+              hover && hover !== r.category && "opacity-40")}
+            style={{ flexGrow: r.value, flexBasis: 0, minWidth: 6 }} />
+        ))}
+      </div>
+      <ul className="mt-6 space-y-3.5">
+        {shown.map((r, i) => (
+          <li key={r.category} className="flex items-center gap-3 text-[15px] sm:text-base"
+            onPointerEnter={() => setHover(r.category)} onPointerLeave={() => setHover("")}>
+            <span className={clsx("size-3 shrink-0 rounded-[3px]", CAT_BG[i])} aria-hidden />
+            <span className="flex-1 text-ink">{r.name}</span>
+            <span className="tabular font-semibold text-ink">{rs(r.value)}</span>
           </li>
-        );
-      })}
-    </ul>
+        ))}
+      </ul>
+    </div>
   );
 }
