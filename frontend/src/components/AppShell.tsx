@@ -13,7 +13,7 @@ import { useSession } from "@/lib/session";
 import { applyTheme, getTheme, type ThemeChoice } from "@/lib/theme";
 import { ChatWidget } from "./ChatWidget";
 import { EmailSettings } from "./EmailSettings";
-import { BottomNav, Sidebar } from "./SectionNav";
+import { BottomNav, navTransitionPending, Sidebar } from "./SectionNav";
 import { Button, Logo, Spinner } from "./ui";
 
 /** Open the settings sheet from anywhere, optionally scrolled to a section. */
@@ -26,6 +26,12 @@ type EmailResult = { connected?: boolean; error?: string };
 export function AppShell({ children, onChatActivity }: { children: React.ReactNode; onChatActivity?: () => void }) {
   const { status, user } = useSession();
   const pathname = usePathname();
+  // Phones: a page opened from the bottom nav brightens in (see SectionNav).
+  const [enter, setEnter] = useState(false);
+  useEffect(() => {
+    document.documentElement.classList.remove("page-leaving");
+    setEnter(navTransitionPending());
+  }, []);
   const [sheet, setSheet] = useState<"" | "settings">("");
   const [settingsClosing, setSettingsClosing] = useState(false);
   const settingsShown = sheet === "settings" && !settingsClosing;
@@ -142,7 +148,7 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
           {avatar("size-12 text-[15px] lg:size-14 lg:text-lg")}
         </header>
 
-        <main>{children}</main>
+        <main className={enter ? "page-enter" : undefined} onAnimationEnd={() => setEnter(false)}>{children}</main>
       </div>
 
       <BottomNav />
