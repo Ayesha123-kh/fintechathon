@@ -1,13 +1,23 @@
 "use client";
 
 import clsx from "clsx";
-import { AlertCircle, Bell, MessageCircleMore, Mic, Send, Sprout, Square, X } from "lucide-react";
+import { AlertCircle, Bell, Loader2, Mail, MessageCircleMore, Mic, Send, ShieldCheck, Sprout, Square, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { api, errorText } from "@/lib/api";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import useSWR from "swr";
+import { api, errorText, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { recordWav, type WavRecorder } from "@/lib/wav";
 
 type Msg = { id: string; role: "user" | "bot" | "system"; sender: string; text: string; kind?: string; final: boolean; created_at: string | null };
+// Live progress of the assistant's turn: what it is thinking and which tool it is using. Never stored.
+type Activity = { state: "thinking" | "tool" | "writing" | "idle"; thinking: string; tool: string | null; sender: string };
+
+/** "fin_user_list_transactions" -> "List transactions" */
+function toolLabel(name: string) {
+  const words = name.replace(/^(fin_user|fin_market|agents)_/, "").replace(/_/g, " ").trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : "Working";
+}
 
 const SUGGESTIONS_NEW = ["Let's set up my savings", "I want to save for a car", "Which banks do you support?"];
 const SUGGESTIONS = ["How much did I spend this week?", "Any deals for my cards today?", "I got a salary increment", "Am I on track for my goals?"];
@@ -21,12 +31,35 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [waiting, setWaiting] = useState(false);
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [showThinking, setShowThinking] = useState(false);
+  // Bumped on every sign of life from the assistant; the "taking longer" notice only fires after real silence.
+  const [lastSign, setLastSign] = useState(0);
   const [status, setStatus] = useState<string>("pending");
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  // Bumped when a voice transcript lands in the message box, to focus it for editing.
+  const [heard, setHeard] = useState(0);
   const [unread, setUnread] = useState(0);
   // Latest message that arrived while the chat was closed, shown as a bubble next to the chat button.
   const [preview, setPreview] = useState<Msg | null>(null);
+  // Onboarding starts only after an inbox is connected (unless Gmail isn't configured on the server).
+  const { data: email, mutate: refreshEmail } = useSWR<{ configured: boolean; connections: unknown[] }>(
+    user && user.role !== "admin" && !user.onboarding_completed ? "/email/connections" : null, fetcher);
+  const needsEmail = !!email?.configured && email.connections.length === 0;
+  const [connecting, setConnecting] = useState(false);
+  const connectGmail = async () => {
+    setConnecting(true);
+    setError("");
+    try {
+      const { url } = await api<{ url: string }>("/email/google/start", { method: "POST" });
+      window.location.href = url;
+    } catch (e) {
+      setError(errorText(e));
+      setConnecting(false);
+    }
+  };
 
   // Phones: the chat icon in the top bar (AppShell) toggles the chat and shows the unread count and open state.
   useEffect(() => {
@@ -59,7 +92,8 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const [readAt, setReadAt] = useState<string | null>(null);
   const readAtRef = useRef<string | null>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
-  const recorder = useRef<MediaRecorder | null>(null);
+  const recorder = useRef<WavRecorder | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
   openRef.current = open;
@@ -99,7 +133,15 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     const es = new EventSource("/api/chat/stream", { withCredentials: true });
     es.onmessage = (ev) => {
       const data = JSON.parse(ev.data);
+      if (data.type === "activity") {
+        const a: Activity = data.activity;
+        setLastSign(Date.now());
+        setActivity(a.state === "idle" ? null : a);
+        if (a.state !== "idle") setWaiting(true); // a turn is running: no parallel questions
+        return;
+      }
       if (data.type !== "message") return;
+      setLastSign(Date.now());
       const msg: Msg = data.message;
       setMessages((prev) => {
         const i = prev.findIndex((p) => p.id === msg.id);
@@ -111,7 +153,11 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
         return [...prev, msg];
       });
       if (msg.role === "bot" || msg.role === "system") {
-        setWaiting(false);
+        // Keep the input locked until the reply is complete, so a second question can't run in parallel.
+        if (msg.final || msg.role === "system") {
+          setWaiting(false);
+          setActivity(null);
+        }
         if (!openRef.current && msg.final) {
           setUnread((u) => u + 1);
           setPreview(msg);
@@ -162,6 +208,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   }, [open]);
 
   const jumped = useRef(false);
+  const step = `${activity?.state ?? ""}:${activity?.tool ?? ""}:${showThinking}`; // keep the live step in view
   useEffect(() => {
     if (!open) {
       jumped.current = false;
@@ -174,21 +221,23 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     }
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: jumped.current ? "smooth" : "auto" });
     if (messages.length) jumped.current = true;
-  }, [messages, waiting, open, readAt]);
+  }, [messages, waiting, open, readAt, step]);
 
-  // If no reply (and no error notice) arrives, don't leave the person staring at "Thinking…".
+  // Long agent turns keep sending thinking / tool activity, which keeps this waiting. Only if the assistant goes
+  // completely silent do we stop waiting, so the person isn't left staring at "Thinking…".
   useEffect(() => {
     if (!waiting) return;
     const t = setTimeout(() => {
       setWaiting(false);
+      setActivity(null);
       setError("Your assistant is taking longer than usual. You'll get a notification when it replies.");
-    }, 90_000);
+    }, 120_000);
     return () => clearTimeout(t);
-  }, [waiting]);
+  }, [waiting, lastSign]);
 
   const send = useCallback(async (value: string) => {
     const t = value.trim();
-    if (!t) return;
+    if (!t || waiting) return;
     setText("");
     setError("");
     setWaiting(true);
@@ -196,42 +245,59 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
       await api("/chat/messages", { method: "POST", json: { text: t } });
     } catch (e) {
       setWaiting(false);
-      setError(errorText(e));
+      if (errorText(e).startsWith("connect_gmail_first")) refreshEmail();
+      else setError(errorText(e));
       setText(t);
     }
-  }, []);
+  }, [waiting, refreshEmail]);
+
+  // Release the microphone if the widget goes away mid-recording.
+  useEffect(() => () => recorder.current?.cancel(), []);
 
   const toggleRecording = async () => {
     if (recording) {
-      recorder.current?.stop();
+      const rec = recorder.current;
+      recorder.current = null;
+      setRecording(false);
+      if (!rec) return;
+      setTranscribing(true);
+      setError("");
+      try {
+        const form = new FormData();
+        form.append("audio", await rec.stop(), "voice.wav");
+        const res = await api<{ text: string }>("/chat/transcribe", { method: "POST", body: form });
+        // Not sent: it goes into the message box (after anything typed meanwhile) to check and edit first.
+        setText((t) => (t.trim() ? `${t.trimEnd()} ${res.text}` : res.text));
+        setHeard((n) => n + 1);
+      } catch (e) {
+        setError(errorText(e));
+      } finally {
+        setTranscribing(false);
+      }
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-      rec.ondataavailable = (e) => chunks.push(e.data);
-      rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        setRecording(false);
-        const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
-        const form = new FormData();
-        form.append("audio", blob, `voice.${(rec.mimeType || "audio/webm").includes("mp4") ? "m4a" : "webm"}`);
-        setWaiting(true);
-        try {
-          await api("/chat/voice", { method: "POST", body: form });
-        } catch (e) {
-          setWaiting(false);
-          setError(errorText(e));
-        }
-      };
-      recorder.current = rec;
-      rec.start();
+      recorder.current = await recordWav();
       setRecording(true);
     } catch {
       setError("Microphone permission is needed for voice messages.");
     }
   };
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!heard || !el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [heard]);
+
+  // Grow the message box with its text (up to max-h-36), so a transcript can be read and edited in place.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  }, [text, open]);
 
   const suggestions = user?.onboarding_completed ? SUGGESTIONS : SUGGESTIONS_NEW;
 
@@ -296,7 +362,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
               <div className="min-w-0 flex-1">
                 <p className="text-lg leading-tight font-bold text-ink">Saving assistant</p>
                 <p className="truncate text-sm text-muted">
-                  {waiting ? "typing…" : status === "ready" ? "Online · Savings Coach · Deals Advisor" : status === "error" ? "Reconnecting…" : "Setting up your assistant…"}
+                  {waiting ? (activity?.state === "tool" ? "working…" : "typing…") : status === "ready" ? "Online · Savings Coach · Deals Advisor" : status === "error" ? "Reconnecting…" : "Setting up your assistant…"}
                 </p>
               </div>
               <button onClick={close} aria-label="Close chat" className="grid size-10 place-items-center rounded-full text-ink-2 hover:bg-hover">
@@ -343,13 +409,37 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                   </Fragment>
                 );
               })}
-              {waiting && (
-                <div className="mt-3">
+              {waiting && (activity ? activity.state !== "writing" : !(messages.at(-1)?.role === "bot" && !messages.at(-1)?.final)) && (
+                <div className="mt-3" aria-live="polite">
                   <Row side="left" avatar>
-                    <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-surface px-4 py-3.5 shadow-sm" role="status" aria-label="Assistant is typing">
-                      {[0, 1, 2].map((d) => (
-                        <span key={d} className="size-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${d * 150}ms` }} />
-                      ))}
+                    <div className="space-y-1.5 rounded-2xl rounded-bl-md bg-surface px-4 py-3 text-sm text-muted shadow-sm">
+                      <div className="flex items-center gap-2">
+                        {activity ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : (
+                          <span className="flex items-center gap-1" role="status" aria-label="Assistant is typing">
+                            {[0, 1, 2].map((d) => (
+                              <span key={d} className="size-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${d * 150}ms` }} />
+                            ))}
+                          </span>
+                        )}
+                        {activity && (
+                          <span className="min-w-0 truncate">
+                            {activity.sender && <span className="font-semibold text-ink-2">{activity.sender} · </span>}
+                            {activity.state === "tool" && activity.tool ? `${toolLabel(activity.tool)}…` : "Thinking…"}
+                          </span>
+                        )}
+                        {activity?.thinking && (
+                          <button onClick={() => setShowThinking((v) => !v)} aria-expanded={showThinking}
+                            className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium hover:bg-hover">
+                            {showThinking ? "Hide" : "Show"} thinking
+                          </button>
+                        )}
+                      </div>
+                      {activity?.thinking && (
+                        <p className={clsx("border-l-2 border-line pl-3 text-xs whitespace-pre-wrap italic",
+                          showThinking ? "max-h-48 overflow-y-auto" : "line-clamp-2")}>
+                          {showThinking ? activity.thinking : activity.thinking.slice(-240)}
+                        </p>
+                      )}
                     </div>
                   </Row>
                 </div>
@@ -357,6 +447,25 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
             </div>
 
             <div className="border-t border-line bg-surface">
+              {needsEmail ? (
+                <div className="space-y-3 px-4 py-4 sm:px-5">
+                  <p className="text-sm text-ink-2">
+                    First, connect the Gmail inbox where your bank alerts arrive. Your assistant then plans with your
+                    real spending instead of guesses.
+                  </p>
+                  <div className="flex items-start gap-2 text-xs text-muted">
+                    <ShieldCheck className="mt-0.5 size-4 shrink-0 text-forest dark:text-primary" aria-hidden />
+                    <p>Read-only. Only alert emails from your banks are read. Disconnect anytime in Settings.</p>
+                  </div>
+                  {error && <p className="text-xs text-danger" role="alert">{error}</p>}
+                  <button onClick={connectGmail} disabled={connecting}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-forest font-semibold text-forest-ink transition hover:brightness-110 disabled:opacity-60">
+                    {connecting ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Mail className="size-5" aria-hidden />}
+                    Connect Gmail
+                  </button>
+                </div>
+              ) : (
+              <>
               {messages.length < 3 && !waiting && (
                 <div className="flex gap-2 overflow-x-auto overscroll-x-contain px-3 pt-3 sm:px-5">
                   {suggestions.map((s) => (
@@ -377,6 +486,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                 className="flex items-end gap-2 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:pb-4"
               >
                 <textarea
+                  ref={inputRef}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => {
@@ -386,28 +496,34 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                     }
                   }}
                   rows={1}
-                  placeholder={recording ? "Listening… tap stop when done" : "Type a message"}
+                  disabled={waiting}
+                  placeholder={recording ? "Listening… tap stop when done" : transcribing ? "Turning your voice into text…"
+                    : waiting ? "Waiting for a reply…" : "Type a message"}
                   aria-label="Message"
-                  className="max-h-36 min-h-12 flex-1 resize-none rounded-3xl border border-line bg-bg px-5 py-3 text-[15px] text-ink outline-none placeholder:text-muted focus:border-forest"
+                  className="max-h-36 min-h-12 flex-1 resize-none rounded-3xl border border-line bg-bg px-5 py-3 text-[15px] text-ink outline-none placeholder:text-muted focus:border-forest disabled:opacity-60"
                 />
-                {text.trim() ? (
-                  <button type="submit" aria-label="Send" className="grid size-12 shrink-0 place-items-center rounded-full bg-forest text-forest-ink transition hover:brightness-110 active:scale-95">
+                {text.trim() && !recording && !transcribing ? (
+                  <button type="submit" aria-label="Send" disabled={waiting} className="grid size-12 shrink-0 place-items-center rounded-full bg-forest text-forest-ink transition hover:brightness-110 active:scale-95 disabled:opacity-60">
                     <Send className="size-5" />
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={toggleRecording}
-                    aria-label={recording ? "Stop recording" : "Record a voice message"}
+                    disabled={(waiting && !recording) || transcribing}
+                    aria-label={recording ? "Stop recording" : transcribing ? "Transcribing" : "Record a voice message"}
                     className={clsx(
-                      "grid size-12 shrink-0 place-items-center rounded-full transition active:scale-95",
+                      "grid size-12 shrink-0 place-items-center rounded-full transition active:scale-95 disabled:opacity-60",
                       recording ? "animate-pulse bg-danger text-white" : "bg-forest text-forest-ink hover:brightness-110",
                     )}
                   >
-                    {recording ? <Square className="size-4" /> : <Mic className="size-5" />}
+                    {recording ? <Square className="size-4" />
+                      : transcribing ? <Loader2 className="size-5 animate-spin" /> : <Mic className="size-5" />}
                   </button>
                 )}
               </form>
+              </>
+              )}
             </div>
           </section>
           </div>

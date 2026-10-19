@@ -3,13 +3,14 @@
 import { ChevronRight, Mail, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback } from "react";
+import useSWR from "swr";
 import { AppShell, openSettings } from "@/components/AppShell";
 import { ProgressRing } from "@/components/charts";
 import {
   ActivityCard, BanksCard, type Dashboard, DealsCard, GoalsCard, SpendingCard, useDashboard,
 } from "@/components/dashboard/sections";
 import { Spinner } from "@/components/ui";
-import { rs } from "@/lib/api";
+import { fetcher, rs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
 export default function DashboardPage() {
@@ -22,13 +23,30 @@ export default function DashboardPage() {
 
 function DashboardView({ d }: { d: Dashboard }) {
   const { user } = useSession();
+  // New users connect Gmail first (read-only bank alerts), then set up the rest in chat.
+  const { data: email } = useSWR<{ configured: boolean; connections: unknown[] }>(
+    user && !user.onboarding_completed ? "/email/connections" : null, fetcher);
+  const needsEmail = !!email?.configured && email.connections.length === 0;
   const hasData = d.banks.length > 0 || d.goals.length > 0;
   const total = Number(d.total_balance);
   const savedShare = total > 0 ? Number(d.total_savings) / total : 0;
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      {!user?.onboarding_completed && (
+      {!user?.onboarding_completed && needsEmail && (
+        <button type="button" onClick={() => openSettings("email")}
+          className="flex w-full items-center gap-4 rounded-[var(--radius-card)] bg-forest p-5 text-left text-forest-ink sm:px-7">
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-ink">
+            <Mail className="size-6" aria-hidden />
+          </span>
+          <span className="flex-1">
+            <span className="block font-semibold">Step 1: connect your Gmail</span>
+            <span className="block text-sm text-forest-muted">We read your bank alerts (read-only) so your plan starts from real spending. Then chat with your assistant.</span>
+          </span>
+          <ChevronRight className="size-5" aria-hidden />
+        </button>
+      )}
+      {!user?.onboarding_completed && !needsEmail && (
         <Link href="?chat=1" className="flex items-center gap-4 rounded-[var(--radius-card)] bg-forest p-5 text-forest-ink sm:px-7">
           <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-ink">
             <MessageCircle className="size-6" aria-hidden />

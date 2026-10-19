@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.deps import Principal, current_principal, own_db
+from app.core.deps import Principal, own_db, user_principal
 from app.models import PushSubscription
 from app.services.notify import notify
 
@@ -28,7 +28,7 @@ class SubscriptionIn(BaseModel):
 
 
 @router.post("/subscribe")
-async def subscribe(body: SubscriptionIn, p: Principal = Depends(current_principal),
+async def subscribe(body: SubscriptionIn, p: Principal = Depends(user_principal),
                     s: AsyncSession = Depends(own_db)) -> dict:
     existing = await s.scalar(select(PushSubscription).where(PushSubscription.endpoint == body.endpoint))
     if existing:
@@ -52,6 +52,6 @@ async def unsubscribe(body: UnsubscribeIn, s: AsyncSession = Depends(own_db)) ->
 
 
 @router.post("/test")
-async def test(p: Principal = Depends(current_principal)) -> dict:
+async def test(p: Principal = Depends(user_principal)) -> dict:
     await notify(p.user_id, "system", "Notifications are on ✅", "We'll nudge you about savings, deals and goals.")
     return {"ok": True}

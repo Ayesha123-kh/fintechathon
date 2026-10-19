@@ -18,6 +18,7 @@ from app.mcp.common import out
 from app.models import (
     AgentRegistry,
     Bank,
+    CardProduct,
     CoverageRequest,
     Deal,
     MarketSignal,
@@ -294,6 +295,22 @@ async def list_bank_names() -> list[str]:
     """Bank names to use in upsert_deal.bank."""
     async with system_session() as s:
         return [b for (b,) in (await s.execute(select(Bank.name).order_by(Bank.name))).all()]
+
+
+@mcp.tool()
+async def list_bank_cards(bank: str) -> list[dict]:
+    """The card products one bank issues (name, network, tier, debit/credit) from our catalog. Use it so the
+    card_network / card_tier / card_type you save on a deal use the same words users' cards are saved with
+    (e.g. a Meezan Visa Platinum debit card -> visa, platinum, debit). The catalog may be incomplete:
+    always follow what the deal page itself says."""
+    async with system_session() as s:
+        b = await s.scalar(select(Bank).where(or_(Bank.name.ilike(bank), Bank.short_name.ilike(bank))))
+        if not b:
+            return []
+        rows = (await s.execute(select(CardProduct).where(CardProduct.bank_id == b.id)
+                                .order_by(CardProduct.card_type, CardProduct.name))).scalars()
+        return [{"name": p.name, "network": p.network, "tier": p.tier, "type": p.card_type, "islamic": p.is_islamic}
+                for p in rows]
 
 
 @mcp.tool()
