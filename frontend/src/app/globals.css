@@ -240,6 +240,70 @@ body {
   }
 }
 
+/* ---------- Phones: bottom-nav page transitions (under a second in total) ---------- */
+@keyframes nav-pop {
+  0% {
+    transform: none;
+  }
+  55% {
+    transform: translateY(-7px) scale(1.08);
+  }
+  100% {
+    transform: translateY(-5px) scale(1.04);
+  }
+}
+@keyframes nav-arrive {
+  from {
+    transform: translateY(-5px) scale(1.04);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes page-enter {
+  from {
+    opacity: 0.55;
+    filter: brightness(0.82);
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+@media (max-width: 639px) {
+  /* The tapped item pops up while the current page dims slightly (never dark)... */
+  .nav-pop {
+    animation: nav-pop 0.22s cubic-bezier(0.3, 1.4, 0.5, 1) forwards;
+  }
+  html.page-leaving main {
+    filter: brightness(0.82);
+    opacity: 0.85;
+    transition:
+      filter 0.17s ease-out,
+      opacity 0.17s ease-out;
+  }
+  /* ...then the new page brightens in and the newly active item settles back into the bar. */
+  .page-enter {
+    animation: page-enter 0.38s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .nav-arrive {
+    animation: nav-arrive 0.3s cubic-bezier(0.3, 1.3, 0.5, 1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-pop,
+  .nav-arrive,
+  .page-enter {
+    animation: none !important;
+  }
+  html.page-leaving main {
+    filter: none;
+    opacity: 1;
+  }
+}
+
 /* Sections reached from the sidebar / bottom nav stop a little below the top edge. */
 [data-section] {
   scroll-margin-top: 1.25rem;

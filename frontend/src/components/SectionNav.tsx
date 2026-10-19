@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Logo } from "./ui";
 
@@ -17,6 +17,21 @@ const SECTIONS: { id: Section; label: string }[] = [
 
 /** Each section's own page (phones open these from the bottom nav). */
 const PAGE: Record<Section, string> = { home: "/dashboard", goals: "/goals", spending: "/spending", banks: "/banks", deals: "/deals" };
+
+/*
+  Phone page transitions. Tapping a nav item pops it up and dims the current page (html.page-leaving), then
+  navigates; the next page's AppShell checks navTransitionPending() to play its brighten-in, and the nav settles
+  the new active item. The whole sequence takes well under a second.
+*/
+const LEAVE_MS = 170;
+let tappedAt = -Infinity;
+/**
+ * True for the page that a bottom-nav tap opened (read by AppShell and the nav when they mount). It is a time
+ * window rather than a one-shot flag so mounting twice (React's development double-mount) still sees it.
+ */
+export function navTransitionPending(): boolean {
+  return performance.now() - tappedAt < 1200;
+}
 
 /** Phones: narrower than the `sm` breakpoint (640px). */
 export function usePhone(): boolean {
@@ -131,6 +146,21 @@ export function Sidebar() {
 export function BottomNav() {
   const active = useActiveSection();
   const phone = usePhone();
+  const router = useRouter();
+  const [popped, setPopped] = useState<Section | null>(null);
+  // The item that was just tapped settles from its popped-up position once its page opens.
+  const [arrived] = useState(() => typeof window !== "undefined" && navTransitionPending());
+  const go = (e: React.MouseEvent, id: Section) => {
+    if (active === id || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; // plain navigation
+    e.preventDefault();
+    setPopped(id);
+    document.documentElement.classList.add("page-leaving");
+    tappedAt = performance.now();
+    setTimeout(() => router.push(PAGE[id]), LEAVE_MS);
+    // Safety net: never leave the page dimmed if the navigation doesn't happen.
+    setTimeout(() => document.documentElement.classList.remove("page-leaving"), 1500);
+  };
   useEffect(() => {
     document.documentElement.classList.add("has-bottom-nav");
     return () => document.documentElement.classList.remove("has-bottom-nav");
@@ -142,7 +172,8 @@ export function BottomNav() {
         {SECTIONS.map(({ id, label }) => (
           <li key={id} className="flex-1 sm:flex-none">
             {phone ? (
-              <Link href={PAGE[id]} aria-current={active === id ? "page" : undefined} className={navItem(active === id)}>
+              <Link href={PAGE[id]} aria-current={active === id ? "page" : undefined} onClick={(e) => go(e, id)}
+                className={clsx(navItem(active === id), popped === id && "nav-pop", arrived && active === id && !popped && "nav-arrive")}>
                 {label}
               </Link>
             ) : (
