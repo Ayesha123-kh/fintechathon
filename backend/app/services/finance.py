@@ -373,8 +373,14 @@ async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
     saved_week = money(await s.scalar(
         select(func.coalesce(func.sum(SavingsEntry.amount), 0))
         .where(SavingsEntry.created_at >= week_ago, SavingsEntry.amount > 0)))
+    saved_month = money(await s.scalar(
+        select(func.coalesce(func.sum(SavingsEntry.amount), 0))
+        .where(SavingsEntry.created_at >= month_start, SavingsEntry.amount > 0)))
     deal_savings = money(await s.scalar(select(func.coalesce(func.sum(DealRedemption.amount_saved), 0))))
-    recent = (await s.execute(select(Transaction).order_by(Transaction.occurred_at.desc()).limit(25))).scalars().all()
+    deal_savings_month = money(await s.scalar(
+        select(func.coalesce(func.sum(DealRedemption.amount_saved), 0))
+        .where(DealRedemption.created_at >= month_start)))
+    recent =(await s.execute(select(Transaction).order_by(Transaction.occurred_at.desc()).limit(25))).scalars().all()
 
     return {
         "currency": "PKR",
@@ -382,7 +388,9 @@ async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
         "total_savings": total_savings,
         "expendable": max(total_balance - total_savings, Decimal(0)),
         "saved_this_week": saved_week,
+        "saved_this_month": saved_month,
         "deal_savings_total": deal_savings,
+        "deal_savings_this_month": deal_savings_month,
         "income_this_month": income_month,
         "spent_this_month": money(sum((r[3] for r in spend_rows), Decimal(0))),
         "banks": banks,

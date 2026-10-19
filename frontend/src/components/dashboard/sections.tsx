@@ -16,8 +16,8 @@ import { fetcher, rs } from "@/lib/api";
 */
 
 export type Dashboard = {
-  total_balance: string; total_savings: string; expendable: string; saved_this_week: string;
-  deal_savings_total: string; income_this_month: string; spent_this_month: string;
+  total_balance: string; total_savings: string; expendable: string; saved_this_week: string; saved_this_month: string;
+  deal_savings_total: string; deal_savings_this_month: string; income_this_month: string; spent_this_month: string;
   banks: { account_id: string; bank: string; bank_short: string; nickname: string; account_type: string;
     balance: string; savings: string; expendable: string }[];
   goals: { id: string; name: string; icon: string; status: string; target: string; saved: string; deadline: string | null;
