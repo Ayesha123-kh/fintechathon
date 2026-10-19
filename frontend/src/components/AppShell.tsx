@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Fingerprint, FlaskConical, LogOut, Monitor, Moon, Shield, Sun, X } from "lucide-react";
+import { Bell, Fingerprint, FlaskConical, LogOut, Moon, Shield, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
@@ -273,17 +273,16 @@ function SettingsPanel({ emailResult }: { emailResult?: EmailResult }) {
 }
 
 function ThemePicker() {
-  const [theme, setTheme] = useState<ThemeChoice>("system");
+  const [theme, setTheme] = useState<ThemeChoice>("light");
   useEffect(() => setTheme(getTheme()), []);
   const options: { id: ThemeChoice; label: string; icon: typeof Sun }[] = [
     { id: "light", label: "Light", icon: Sun },
     { id: "dark", label: "Dark", icon: Moon },
-    { id: "system", label: "Device", icon: Monitor },
   ];
   return (
     <div>
       <p className="mb-2 text-sm font-medium text-ink-2">Appearance</p>
-      <div role="radiogroup" aria-label="Appearance" className="grid grid-cols-3 gap-1 rounded-full bg-surface-2 p-1">
+      <div role="radiogroup" aria-label="Appearance" className="grid grid-cols-2 gap-1 rounded-full bg-surface-2 p-1">
         {options.map(({ id, label, icon: Icon }) => (
           <button key={id} role="radio" aria-checked={theme === id}
             onClick={() => { applyTheme(id); setTheme(id); }}
