@@ -7,7 +7,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . .
-RUN chmod +x docker-entrypoint.sh
+# Strip CRLF (Windows checkouts) or the script fails with "not found".
+RUN sed -i "s/\r$//" docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 ENV PATH="/app/.venv/bin:$PATH" PORT=8000
 EXPOSE 8000
 ENTRYPOINT ["./docker-entrypoint.sh"]

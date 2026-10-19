@@ -6,14 +6,14 @@ RUN pnpm install --frozen-lockfile
 
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
-RUN corepack enable pnpm
 ENV NEXT_TELEMETRY_DISABLED=1
 # Rewrites (the /api proxy target) are resolved at build time.
 ARG BACKEND_INTERNAL_URL=http://backend:8000
 ENV BACKEND_INTERNAL_URL=$BACKEND_INTERNAL_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm build
+# Call next directly: running pnpm here would make corepack download it again.
+RUN node_modules/.bin/next build
 
 FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
