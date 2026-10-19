@@ -15,15 +15,18 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: "deals", label: "Deals" },
 ];
 
+/** Phones put Home in the middle of the bottom bar. */
+const PHONE_ORDER: Section[] = ["goals", "spending", "home", "banks", "deals"];
+
 /** Each section's own page (phones open these from the bottom nav). */
 const PAGE: Record<Section, string> = { home: "/dashboard", goals: "/goals", spending: "/spending", banks: "/banks", deals: "/deals" };
 
 /*
-  Phone page transitions (about 1.5 s in all). The selected item always sits raised above the bar. Tapping another
+  Phone page transitions (about 1 s in all). The selected item always sits raised above the bar. Tapping another
   one lowers the old item and raises the new one, while the current page dims slightly (html.page-leaving); then
   it navigates and the next page's AppShell, seeing navTransitionPending(), fades the new page in.
 */
-const LEAVE_MS = 550; // lift + dim before the next page opens
+const LEAVE_MS = 350; // lift + dim before the next page opens
 let tappedAt = -Infinity;
 /**
  * True for the page that a bottom-nav tap opened (read by AppShell and the nav when they mount). It is a time
@@ -169,7 +172,7 @@ export function BottomNav() {
     <nav aria-label="Dashboard sections"
       className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 lg:hidden">
       <ul className="flex h-16 items-center gap-1 rounded-full bg-side p-2 shadow-lg shadow-black/10">
-        {SECTIONS.map(({ id, label }) => (
+        {(phone ? PHONE_ORDER.map((id) => SECTIONS.find((x) => x.id === id)!) : SECTIONS).map(({ id, label }) => (
           <li key={id} className="flex-1 sm:flex-none">
             {phone ? (
               <Link href={PAGE[id]} aria-current={active === id ? "page" : undefined} onClick={(e) => go(e, id)}
