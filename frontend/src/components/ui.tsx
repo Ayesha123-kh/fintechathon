@@ -1,12 +1,11 @@
 "use client";
 
 import clsx from "clsx";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
-import Image from "next/image";
+import { Eye, EyeOff, Loader2, Sprout } from "lucide-react";
 import { forwardRef, useState } from "react";
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={clsx("rounded-[var(--radius-card)] border-2 border-primary dark:border-forest bg-surface p-5", className)} {...props} />;
+  return <div className={clsx("rounded-[var(--radius-card)] bg-surface p-5 sm:p-7", className)} {...props} />;
 }
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -86,11 +85,18 @@ export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={clsx("size-5 animate-spin text-muted", className)} aria-label="Loading" />;
 }
 
-export function Logo({ size = 40, withName = true }: { size?: number; withName?: boolean }) {
+/** Peach tile with the sprout mark; `tone="forest"` is the green tile used in the tablet header. */
+export function Logo({ size = 40, withName = true, tone = "peach", nameClassName }: {
+  size?: number; withName?: boolean; tone?: "peach" | "forest"; nameClassName?: string;
+}) {
   return (
-    <span className="inline-flex items-center gap-2.5">
-      <Image src="/icons/icon-192.png" alt="" width={size} height={size} className="rounded-xl" priority />
-      {withName && <span className="text-xl font-bold tracking-tight text-forest dark:text-primary">Bachat</span>}
+    <span className="inline-flex items-center gap-3">
+      <span aria-hidden style={{ width: size, height: size }}
+        className={clsx("grid shrink-0 place-items-center rounded-[30%]",
+          tone === "peach" ? "bg-primary text-forest" : "bg-forest text-primary")}>
+        <Sprout style={{ width: size * 0.5, height: size * 0.5 }} strokeWidth={2.25} />
+      </span>
+      {withName && <span className={clsx("text-2xl font-bold tracking-tight", nameClassName ?? "text-ink")}>Saving</span>}
     </span>
   );
 }

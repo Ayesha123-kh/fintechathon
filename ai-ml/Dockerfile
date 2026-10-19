@@ -16,7 +16,8 @@ RUN UV_PYTHON_DOWNLOADS=never uv sync --frozen --no-dev --no-install-project --p
 COPY --chown=maus:maus gateway ./gateway
 COPY --chown=maus:maus prompts ./prompts
 COPY --chown=maus:maus docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
+# Strip CRLF (Windows checkouts) or the script fails with "not found".
+RUN sed -i "s/\r$//" docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 
 USER maus
 ENV PATH="/gateway/.venv/bin:$PATH" \

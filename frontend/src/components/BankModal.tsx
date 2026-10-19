@@ -37,7 +37,7 @@ export function BankModal({ accountId, onClose }: { accountId: string; onClose: 
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" role="dialog" aria-modal="true"
       aria-label={account ? `${account.bank} details` : "Bank details"}>
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <section className="safe-bottom relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[1.75rem] border-2 border-primary dark:border-forest bg-surface p-5 md:max-w-lg md:rounded-[1.75rem]">
+      <section className="safe-bottom relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[var(--radius-card)] bg-surface p-5 shadow-2xl sm:p-7 md:max-w-lg md:rounded-[var(--radius-card)]">
         <button ref={closeRef} onClick={onClose} aria-label="Close"
           className="absolute top-4 right-4 grid size-9 place-items-center rounded-full hover:bg-hover">
           <X className="size-5" />
@@ -49,7 +49,7 @@ export function BankModal({ accountId, onClose }: { accountId: string; onClose: 
         ) : (
           <>
             <div className="flex items-start gap-3 pr-10">
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-forest text-forest-ink"><Landmark className="size-5" aria-hidden /></span>
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-badge text-forest dark:text-primary"><Landmark className="size-5" aria-hidden /></span>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{account.bank}</p>
                 <p className="text-xs capitalize text-muted">{account.account_type} account</p>
@@ -72,7 +72,7 @@ export function BankModal({ accountId, onClose }: { accountId: string; onClose: 
             {account.cards.length > 0 && (
               <div className="mt-4 space-y-2">
                 {account.cards.map((c) => (
-                  <div key={c.id} className="flex items-center gap-3 rounded-2xl border-2 border-forest dark:border-primary bg-surface-2 px-3.5 py-2.5">
+                  <div key={c.id} className="flex items-center gap-3 rounded-2xl bg-surface-2 px-3.5 py-2.5">
                     <CreditCard className="size-5 text-forest dark:text-primary" aria-hidden />
                     <p className="flex-1 text-sm font-medium">{c.label}</p>
                   </div>

@@ -1,74 +1,66 @@
 @import "tailwindcss";
 
-/* `dark:` follows the in-app choice (data-theme on <html>), else the device setting. */
+/* `dark:` applies only when someone picks Dark in Settings; the device's dark mode does not switch the app. */
 @custom-variant dark {
   &:where([data-theme="dark"], [data-theme="dark"] *) {
     @slot;
   }
-  @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
-      @slot;
-    }
-  }
 }
 
-/* Brand: #B0E454 lime · #224F10 forest · #EAFFD0 mint · #0D0D0D ink */
+/* Palette sampled from the dashboard reference: warm beige page, cream cards, brown sidebar, deep green, peach accent. */
 :root {
-  --bg: #ffffff;
-  /* Cards and the tiles inside them share one colour, as in dark mode. */
-  --surface: #eaffd0;
-  --surface-2: #eaffd0;
-  --ink: #0d0d0d;
-  --ink-2: #3d4636;
-  --muted: #6b7564;
-  --line: #c9e0a8;
-  --primary: #b0e454;
-  --primary-ink: #0d0d0d;
-  --forest: #224f10;
-  --forest-ink: #eaffd0;
+  --bg: #ece4d2;
+  --surface: #f7f0e5;
+  --surface-2: #f0e5d4;
+  --ink: #211913;
+  --ink-2: #43382f;
+  --muted: #645949;
+  --line: #e2d5c1;
+  --primary: #f2b49b;
+  --primary-ink: #3a1200;
+  --forest: #16423c;
+  --forest-2: #1e5249;
+  --forest-track: #2c6158;
+  --forest-ink: #ffffff;
+  --forest-muted: #bdd7ce;
+  --side: #29211b;
+  --side-2: #3a2e27;
+  --side-ink: #dcd2c8;
+  --badge: #e8d9c3;
+  --deal: #c5583d;
+  --deal-bg: #fcede7;
+  --alert: #e17b60;
   --danger: #b42318;
-  /* Validated chart steps (dataviz validator, light surface) */
-  --chart-save: #2e6a14;
-  --chart-spend: #b0e454;
-  --chart-track: #d2e8b4;
-  --hover: #d3ecac;
+  --chart-save: #16423c;
+  --chart-spend: #f2b49b;
+  --chart-track: #e1d2bc;
+  --cat-1: #16423c;
+  --cat-2: #4f8a7b;
+  --cat-3: #9cc3b6;
+  --cat-4: #e0795f;
+  --cat-5: #f2b49b;
+  --hover: #e9decb;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0d0d0d;
-    --surface: #161a13;
-    --surface-2: #1d2219;
-    --ink: #f1f7e8;
-    --ink-2: #c9d4bd;
-    --muted: #8d9883;
-    --line: #2a3224;
-    --primary: #b0e454;
-    --primary-ink: #0d0d0d;
-    --forest: #224f10;
-    --forest-ink: #eaffd0;
-    --danger: #f97066;
-    --chart-save: #4e8c22;
-    --chart-spend: #b0e454;
-    --chart-track: #242b1f;
-    --hover: #2a3323;
-  }
-}
-
+/* Dark, only when chosen in Settings: the same hues on deep brown. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0d0d0d;
-  --surface: #161a13;
-  --surface-2: #1d2219;
-  --ink: #f1f7e8;
-  --ink-2: #c9d4bd;
-  --muted: #8d9883;
-  --line: #2a3224;
+  --bg: #15110e;
+  --surface: #221b16;
+  --surface-2: #2b231d;
+  --ink: #f3ece2;
+  --ink-2: #d6ccc0;
+  --muted: #a2968a;
+  --line: #3a3029;
+  --side: #0e0b09;
+  --side-2: #221b16;
+  --badge: #33291f;
+  --deal-bg: #2e1f19;
   --danger: #f97066;
-  --chart-save: #4e8c22;
-  --chart-spend: #b0e454;
-  --chart-track: #242b1f;
-  --hover: #2a3323;
+  --chart-save: #9cc3b6;
+  --chart-track: #3a3029;
+  --cat-1: #2f7a6d;
+  --hover: #2e261f;
 }
 
 @theme inline {
@@ -82,14 +74,31 @@
   --color-primary: var(--primary);
   --color-primary-ink: var(--primary-ink);
   --color-forest: var(--forest);
+  --color-forest-2: var(--forest-2);
+  --color-forest-track: var(--forest-track);
   --color-forest-ink: var(--forest-ink);
+  --color-forest-muted: var(--forest-muted);
+  --color-side: var(--side);
+  --color-side-2: var(--side-2);
+  --color-side-ink: var(--side-ink);
+  --color-badge: var(--badge);
+  --color-deal: var(--deal);
+  --color-deal-bg: var(--deal-bg);
+  --color-alert: var(--alert);
   --color-danger: var(--danger);
   --color-chart-save: var(--chart-save);
   --color-chart-spend: var(--chart-spend);
   --color-chart-track: var(--chart-track);
+  --color-cat-1: var(--cat-1);
+  --color-cat-2: var(--cat-2);
+  --color-cat-3: var(--cat-3);
+  --color-cat-4: var(--cat-4);
+  --color-cat-5: var(--cat-5);
   --color-hover: var(--hover);
-  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --radius-card: 1.5rem;
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 1.75rem;
+  /* Laptops wide enough for goals + spending, then banks / deals / activity, side by side (1380px). */
+  --breakpoint-wide: 86.25rem;
 }
 
 :root[data-theme="light"] {
@@ -134,7 +143,7 @@ body {
   text-decoration: underline;
 }
 
-/* Chat preview bubble popping out of the chat button */
+/* Chat preview bubble popping out of the chat button (bottom right). */
 @keyframes bubble-pop {
   from {
     opacity: 0;
@@ -149,155 +158,135 @@ body {
   transform-origin: bottom right;
   animation: bubble-pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
-@media (max-width: 767px) {
-  /* On phones it drops down from the chat icon in the top bar. */
+@media (max-width: 639px) {
+  /* Phones: it hangs from the chat icon in the top bar. */
   .bubble-pop {
     transform-origin: top right;
-    animation-name: bubble-drop;
-  }
-}
-@keyframes bubble-drop {
-  from {
-    opacity: 0;
-    transform: translateY(-12px) scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .bubble-pop {
-    animation: none;
   }
 }
 
-/* Space the chat button keeps above the phone tab bar. */
+/* Space kept clear above the floating bottom nav (phones and tablets; laptops use the sidebar). */
 :root {
   --bottom-nav: 0px;
 }
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   :root.has-bottom-nav {
-    --bottom-nav: 5.5rem;
+    --bottom-nav: calc(4.75rem + env(safe-area-inset-bottom));
   }
 }
 
-/* ---------- Phone tab bar: a curved notch cut into the bar follows the active tab ---------- */
-.tabbar {
-  --x: calc((var(--i) + 0.5) * 20%); /* centre of the active tab */
-  --ease: cubic-bezier(0.65, 0, 0.35, 1);
-}
-.tabbar-fill-left,
-.tabbar-fill-right,
-.tabbar-notch-shape {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  fill: var(--forest);
-  background: var(--forest);
-}
-.tabbar-fill-left {
-  left: 0;
-  width: max(0px, calc(var(--x) - 59px));
-  transition: width 0.5s var(--ease);
-}
-.tabbar-notch-shape {
-  left: calc(var(--x) - 60px);
-  width: 120px;
-  height: 100%;
-  background: transparent;
-  transition: left 0.5s var(--ease);
-}
-.tabbar-fill-right {
-  left: calc(var(--x) + 59px);
-  right: 0;
-  transition: left 0.5s var(--ease);
-}
-.tabbar-bubble {
-  position: absolute;
-  top: -1.0625rem;
-  left: calc(var(--x) - 1.5625rem);
-  z-index: 1;
-  display: grid;
-  width: 3.125rem;
-  height: 3.125rem;
-  place-items: center;
-  border-radius: 9999px;
-  background: var(--primary);
-  color: var(--primary-ink);
-  box-shadow: 0 6px 16px rgb(0 0 0 / 0.2);
-  transition: left 0.5s var(--ease);
-  animation: tabbar-dip 0.55s cubic-bezier(0.34, 1.4, 0.64, 1);
-}
-/* Re-mounted on every tab change: sink into the bar while travelling, then pop up with the new icon. */
-@keyframes tabbar-dip {
-  0% {
-    transform: translateY(1.75rem) scale(0.35);
-    opacity: 0;
-  }
-  50% {
-    transform: translateY(1.25rem) scale(0.5);
-    opacity: 0.35;
-  }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .tabbar-fill-left,
-  .tabbar-fill-right,
-  .tabbar-notch-shape,
-  .tabbar-bubble {
-    transition: none;
-    animation: none;
-  }
-}
-
-/* ---------- Panels that drop down from a top-bar icon (phones) ---------- */
-@keyframes drop-in {
+/* ---------- Panels that pop out of the control that opened them ---------- */
+@keyframes pop-in {
   from {
     opacity: 0;
-    transform: translateY(-10px) scale(0.55);
+    transform: translateY(var(--pop-y, -10px)) scale(0.6);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-@keyframes drop-out {
+@keyframes pop-out {
   from {
     opacity: 1;
     transform: none;
   }
   to {
     opacity: 0;
-    transform: translateY(-8px) scale(0.6);
+    transform: translateY(var(--pop-y, -8px)) scale(0.65);
   }
 }
-@media (max-width: 767px) {
-  .drop-tr,
-  .drop-tl {
-    animation: drop-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.12);
-  }
-  .drop-tr {
-    transform-origin: top right;
-  }
-  .drop-tl {
+.pop-tr,
+.pop-br,
+.pop-chat {
+  animation: pop-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.12);
+}
+.pop-tr {
+  transform-origin: top right;
+}
+.pop-br,
+.pop-chat {
+  --pop-y: 10px;
+  transform-origin: bottom right;
+}
+/* Phones: the avatar, and so the settings panel's origin, is top-left. */
+@media (max-width: 639px) {
+  .pop-sheet {
     transform-origin: top left;
   }
-  .drop-tr.is-closing,
-  .drop-tl.is-closing {
-    animation: drop-out 0.18s ease-in forwards;
+}
+/* The chat grows out of the floating button on wider screens and out of the top bar's chat icon on phones. */
+@media (max-width: 639px) {
+  .pop-chat {
+    --pop-y: -10px;
+    transform-origin: top right;
   }
-  .fade-closing {
-    transition: opacity 0.18s;
-    opacity: 0;
+}
+.pop-tr.is-closing,
+.pop-br.is-closing,
+.pop-chat.is-closing {
+  animation: pop-out 0.18s ease-in forwards;
+}
+.fade-closing {
+  transition: opacity 0.18s;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bubble-pop,
+  .pop-tr,
+  .pop-br,
+  .pop-chat {
+    animation: none !important;
+  }
+}
+
+/* ---------- Phones: bottom-nav page transitions (about 1 s in total) ---------- */
+@keyframes page-enter {
+  from {
+    opacity: 0.5;
+    filter: brightness(0.8);
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+@media (max-width: 639px) {
+  /* One peach highlight slides to the tapped item: a fifth of the bar (less its padding and gaps), moved by index. */
+  .nav-slider {
+    width: calc((100% - 1rem - 4 * 0.25rem) / 5);
+    transform: translateX(calc(var(--i) * (100% + 0.25rem)));
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* The current page dims slightly (never dark) while the highlight slides... */
+  html.page-leaving main {
+    filter: brightness(0.8);
+    opacity: 0.85;
+    transition:
+      filter 0.28s ease 0.05s,
+      opacity 0.28s ease 0.05s;
+  }
+  /* ...then the next page brightens in. */
+  .page-enter {
+    animation: page-enter 0.6s cubic-bezier(0.22, 0.8, 0.25, 1);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .drop-tr,
-  .drop-tl {
+  .nav-slider {
+    transition: none;
+  }
+  .page-enter {
     animation: none !important;
   }
+  html.page-leaving main {
+    filter: none;
+    opacity: 1;
+  }
+}
+
+/* Sections reached from the sidebar / bottom nav stop a little below the top edge. */
+[data-section] {
+  scroll-margin-top: 1.25rem;
 }

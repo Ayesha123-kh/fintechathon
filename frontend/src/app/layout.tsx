@@ -1,33 +1,36 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { SessionProvider } from "@/lib/session";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
-const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta", display: "swap" });
+// Bundled (latin, variable 100-900) so the build never has to reach Google Fonts.
+const outfit = localFont({
+  src: "./fonts/Outfit-latin.woff2",
+  weight: "100 900",
+  variable: "--font-outfit",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Bachat",
+  title: "Saving",
   description: "Your personal savings assistant: goals, discounts and smart money habits.",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icons/favicon-64.png", apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Bachat", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Saving", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
-    { media: "(prefers-color-scheme: dark)", color: "#0D0D0D" },
-  ],
+  themeColor: "#ECE4D2",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={jakarta.variable} suppressHydrationWarning>
+    <html lang="en" className={outfit.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>

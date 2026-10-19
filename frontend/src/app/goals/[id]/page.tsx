@@ -34,12 +34,13 @@ export default function GoalPage() {
       {error ? <p className="text-muted">This goal could not be found.</p> : !g ? <Spinner /> : (
         <div className="grid gap-5 lg:grid-cols-5">
           <div className="space-y-5 lg:col-span-3">
-            <Card>
+            {/* Same deep-green card with a peach ring as the dashboard's balance card. */}
+            <div className="rounded-[2rem] bg-forest p-6 text-forest-ink sm:p-8">
               <div className="flex items-center gap-4">
                 <GoalIcon name={g.icon} size="lg" />
                 <div>
-                  <h1 className="text-2xl font-bold">{g.name}</h1>
-                  <p className="text-sm text-muted">
+                  <h1 className="text-2xl font-bold sm:text-3xl">{g.name}</h1>
+                  <p className="text-sm text-forest-muted">
                     {g.status === "completed" ? "Completed 🎉" : g.status === "paused" ? "Paused" : `Priority ${g.priority}`}
                     {g.deadline && ` · Target date ${fmtDate(g.deadline)}`}
                   </p>
@@ -47,28 +48,30 @@ export default function GoalPage() {
               </div>
               <div className="mt-6 flex items-center justify-between gap-4">
                 <dl className="tabular space-y-3">
-                  <div><dt className="text-sm text-muted">Saved</dt><dd className="text-2xl font-bold whitespace-nowrap sm:text-3xl">{rs(g.saved)}</dd></div>
-                  <div><dt className="text-sm text-muted">Target</dt><dd className="font-semibold">{rs(g.target)}</dd></div>
-                  <div><dt className="text-sm text-muted">Remaining</dt><dd className="font-semibold">{rs(g.remaining)}</dd></div>
+                  <div><dt className="text-sm text-forest-muted">Saved</dt><dd className="text-3xl font-bold whitespace-nowrap sm:text-4xl">{rs(g.saved)}</dd></div>
+                  <div><dt className="text-sm text-forest-muted">Target</dt><dd className="font-semibold">{rs(g.target)}</dd></div>
+                  <div><dt className="text-sm text-forest-muted">Remaining</dt><dd className="font-semibold">{rs(g.remaining)}</dd></div>
                 </dl>
                 <div className="sm:hidden">
-                <ProgressRing value={g.progress} size={120} thickness={12} label="Goal progress">
+                <ProgressRing value={g.progress} size={120} thickness={12} label="Goal progress"
+                  trackClassName="stroke-forest-track" barClassName="stroke-primary">
                   <div className="text-center">
                     <p className="tabular text-2xl font-bold">{Math.round(g.progress * 100)}%</p>
-                    <p className="text-[11px] text-muted">saved</p>
+                    <p className="text-[11px] text-forest-muted">saved</p>
                   </div>
                 </ProgressRing>
                 </div>
                 <div className="hidden sm:block">
-                <ProgressRing value={g.progress} size={156} thickness={16} label="Goal progress">
+                <ProgressRing value={g.progress} size={156} thickness={16} label="Goal progress"
+                  trackClassName="stroke-forest-track" barClassName="stroke-primary">
                   <div className="text-center">
                     <p className="tabular text-2xl font-bold">{Math.round(g.progress * 100)}%</p>
-                    <p className="text-[11px] text-muted">saved</p>
+                    <p className="text-[11px] text-forest-muted">saved</p>
                   </div>
                 </ProgressRing>
                 </div>
               </div>
-            </Card>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <Card>
@@ -84,14 +87,14 @@ export default function GoalPage() {
             </div>
 
             {g.status === "active" && (
-              <Card className={g.on_track ? "bg-primary/35" : "bg-surface"}>
+              <Card className={g.on_track ? "bg-primary! text-primary-ink" : undefined}>
                 <p className="font-semibold">{g.on_track ? "You're on track 👏" : "A little behind schedule"}</p>
-                <p className="mt-1 text-sm text-ink-2">
+                <p className={g.on_track ? "mt-1 text-sm" : "mt-1 text-sm text-ink-2"}>
                   {g.projected_completion
                     ? `At your current pace you'll reach it around ${fmtDate(g.projected_completion)}.`
                     : "Once savings start flowing in, we'll project your finish date."}
                 </p>
-                <Link href="?chat=1" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-forest dark:text-primary">
+                <Link href="?chat=1" className={g.on_track ? "mt-3 inline-flex items-center gap-2 text-sm font-semibold underline-offset-4 hover:underline" : "mt-3 inline-flex items-center gap-2 text-sm font-semibold text-forest dark:text-primary"}>
                   <MessageCircle className="size-4" aria-hidden /> Ask your coach how to speed it up
                 </Link>
               </Card>

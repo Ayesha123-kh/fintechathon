@@ -62,7 +62,7 @@ export function EmailSettings({ result }: { result?: { connected?: boolean; erro
       {!data ? <Spinner /> : (
         <>
           {data.connections.map((c) => (
-            <div key={c.id} className="rounded-2xl border-2 border-forest bg-surface-2 p-3 dark:border-primary">
+            <div key={c.id} className="rounded-2xl bg-surface-2 p-3">
               <div className="flex items-center gap-2">
                 <Mail className="size-4 shrink-0 text-muted" aria-hidden />
                 <div className="min-w-0 flex-1">
