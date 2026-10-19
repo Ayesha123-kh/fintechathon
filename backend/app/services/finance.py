@@ -380,7 +380,14 @@ async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
     deal_savings_month = money(await s.scalar(
         select(func.coalesce(func.sum(DealRedemption.amount_saved), 0))
         .where(DealRedemption.created_at >= month_start)))
-    recent =(await s.execute(select(Transaction).order_by(Transaction.occurred_at.desc()).limit(25))).scalars().all()
+    # This month's salary is in once an income credit reaches 60% of the stated monthly income (the bar
+    # record_transaction uses to recognise a salary); before an income is stated, any income credit counts.
+    profile = await s.get(UserProfile, user_id)
+    salary_floor = money(profile.monthly_income) * Decimal("0.6") if profile and profile.monthly_income else Decimal(0)
+    salary_credited = await s.scalar(select(Transaction.id).where(
+        Transaction.is_income.is_(True), Transaction.occurred_at >= month_start, Transaction.amount >= salary_floor,
+    ).limit(1)) is not None
+    recent = (await s.execute(select(Transaction).order_by(Transaction.occurred_at.desc()).limit(25))).scalars().all()
 
     return {
         "currency": "PKR",
@@ -392,6 +399,7 @@ async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
         "deal_savings_total": deal_savings,
         "deal_savings_this_month": deal_savings_month,
         "income_this_month": income_month,
+        "salary_credited_this_month": salary_credited,
         "spent_this_month": money(sum((r[3] for r in spend_rows), Decimal(0))),
         "banks": banks,
         "goals": goal_rows,
