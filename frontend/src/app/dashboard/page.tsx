@@ -59,7 +59,7 @@ function DashboardView({ d }: { d: Dashboard }) {
         </Link>
       )}
 
-      {/* Row 1: balance, then "saved this week" and "saved with deals" (beside it from tablets up, below it on phones). */}
+      {/* Row 1: balance, then "saved this month" and "saved with deals" this month (beside it from tablets up, below it on phones). */}
       <section id="home" data-section className="grid gap-4 sm:gap-5 md:grid-cols-[2fr_1fr] xl:grid-cols-[1.85fr_1fr]">
         <div className="flex flex-col justify-between gap-6 rounded-[2rem] bg-forest p-6 text-forest-ink sm:p-8 lg:p-9">
           <div className="flex items-start justify-between gap-4">
@@ -100,16 +100,16 @@ function DashboardView({ d }: { d: Dashboard }) {
 
         <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-1">
           <div className="flex flex-col justify-center rounded-[2rem] bg-primary p-5 text-primary-ink sm:p-7">
-            <p className="text-sm font-semibold sm:text-base">Saved this week</p>
-            <p className="tabular mt-1 text-2xl font-bold tracking-tight whitespace-nowrap sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.saved_this_week)}</p>
+            <p className="text-sm font-semibold sm:text-base">Saved this month</p>
+            <p className="tabular mt-1 text-2xl font-bold tracking-tight whitespace-nowrap sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.saved_this_month)}</p>
             <p className="mt-1 text-xs sm:mt-2 sm:text-base">
-              {Number(d.saved_this_week) > 0 ? <>Great going<span className="max-xl:hidden">, keep it up</span>!</> : "Your next salary starts it off."}
+              {Number(d.saved_this_month) > 0 ? <>Great going<span className="max-xl:hidden">, keep it up</span>!</> : "Your next salary starts it off."}
             </p>
           </div>
           <div className="flex flex-col justify-center rounded-[2rem] bg-surface p-5 sm:p-7">
             <p className="text-sm text-muted sm:text-base">Saved with deals</p>
-            <p className="tabular mt-1 text-2xl font-bold tracking-tight whitespace-nowrap text-ink sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.deal_savings_total)}</p>
-            <p className="mt-1 text-xs text-muted sm:mt-2 sm:text-base">From card discounts</p>
+            <p className="tabular mt-1 text-2xl font-bold tracking-tight whitespace-nowrap text-ink sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.deal_savings_this_month)}</p>
+            <p className="mt-1 text-xs text-muted sm:mt-2 sm:text-base">From card discounts this month</p>
           </div>
         </div>
       </section>
