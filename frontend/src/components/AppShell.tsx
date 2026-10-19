@@ -11,6 +11,7 @@ import { passkeySupported, registerPasskey } from "@/lib/passkey";
 import { currentSubscription, disablePush, enablePush, pushSupported } from "@/lib/push";
 import { useSession } from "@/lib/session";
 import { applyTheme, getTheme, type ThemeChoice } from "@/lib/theme";
+import { ProfileCard } from "./Avatar";
 import { ChatWidget } from "./ChatWidget";
 import type { Dashboard } from "./dashboard/sections";
 import { EmailSettings } from "./EmailSettings";
@@ -287,10 +288,7 @@ function SettingsPanel({ emailResult }: { emailResult?: EmailResult }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl bg-surface-2 p-4">
-        <p className="font-semibold">{user?.full_name}</p>
-        <p className="text-sm text-muted">{user?.email}</p>
-      </div>
+      <ProfileCard />
       {!isAdmin && <EmailSettings result={emailResult} />}
       {passkeySupported() && (
         <Button variant="outline" className="w-full justify-start" onClick={addPasskey} loading={busy === "passkey"}>

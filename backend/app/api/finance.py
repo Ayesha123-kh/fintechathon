@@ -7,7 +7,7 @@ except a few toggles that also exist in chat.
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +27,7 @@ from app.models import (
     User,
     UserProfile,
 )
-from app.services import finance
+from app.services import avatar, finance
 from app.services.deals import find_deals
 from app.services.omb import refresh_room
 from app.services.text import transaction_title
@@ -47,7 +47,49 @@ async def me(p: Principal = Depends(user_principal), s: AsyncSession = Depends(o
         "investment_opt_in": bool(profile and profile.investment_opt_in),
         "assistant_status": room.status if room else "pending",
         "test_tools": settings.test_tools_enabled,
+        "avatar_version": _avatar_version(profile),
     }
+
+
+def _avatar_version(profile: UserProfile | None) -> int | None:
+    """Changes whenever the photo does; the app adds it to the photo's URL so browsers can cache it."""
+    return int(profile.avatar_updated_at.timestamp() * 1000) if profile and profile.avatar_updated_at else None
+
+
+@router.post("/me/avatar")
+async def upload_avatar(image: UploadFile = File(...), p: Principal = Depends(user_principal),
+                        s: AsyncSession = Depends(own_db)) -> dict:
+    """Set the optional profile photo. The app crops and shrinks it in the browser before uploading."""
+    data = await image.read(avatar.MAX_BYTES + 1)
+    if len(data) > avatar.MAX_BYTES:
+        raise HTTPException(413, "avatar_too_large")
+    kind = avatar.image_type(data)
+    if not kind:
+        raise HTTPException(415, "avatar_must_be_an_image")
+    profile = await s.get(UserProfile, p.user_id)
+    if not profile:
+        raise HTTPException(404, "not_found")
+    profile.avatar, profile.avatar_type, profile.avatar_updated_at = data, kind, datetime.now(UTC)
+    return {"ok": True, "avatar_version": _avatar_version(profile)}
+
+
+@router.get("/me/avatar")
+async def get_avatar(p: Principal = Depends(user_principal), s: AsyncSession = Depends(own_db)) -> Response:
+    row = (await s.execute(select(UserProfile.avatar, UserProfile.avatar_type)
+                           .where(UserProfile.user_id == p.user_id))).one_or_none()
+    if not row or not row.avatar:
+        raise HTTPException(404, "no_avatar")
+    # Its URL carries ?v=<avatar_version>, so the browser may keep it until the photo changes.
+    return Response(row.avatar, media_type=row.avatar_type, headers={
+        "Cache-Control": "private, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff"})
+
+
+@router.delete("/me/avatar")
+async def delete_avatar(p: Principal = Depends(user_principal), s: AsyncSession = Depends(own_db)) -> dict:
+    profile = await s.get(UserProfile, p.user_id)
+    if profile:
+        profile.avatar, profile.avatar_type, profile.avatar_updated_at = None, None, None
+    return {"ok": True}
 
 
 class MePatch(BaseModel):

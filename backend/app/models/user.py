@@ -52,6 +52,11 @@ class UserProfile(Timestamps, Base):
     onboarding_state: Mapped[dict] = mapped_column(JSONB, default=dict)
     # When the person last opened the chat; later bot messages and notifications count as unread.
     chat_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Optional profile photo: a small square image (cropped in the browser) shown beside the person's own chat
+    # messages. Deferred so the many other reads of the profile never load the image.
+    avatar: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
+    avatar_type: Mapped[str | None] = mapped_column(String(20))  # image/jpeg | image/png | image/webp
+    avatar_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class UserFact(UUIDPk, UserOwned, Base):
