@@ -10,7 +10,19 @@ const nextConfig: NextConfig = {
     return [{ source: "/api/:path*", destination: `${backend}/api/:path*` }];
   },
   async headers() {
+    // Every page: never framed by another site (clickjacking), no MIME sniffing, a strict referrer, HTTPS only once
+    // seen over HTTPS, and only the device features the app uses (the microphone, for voice notes).
+    const security = [
+      { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+      { key: "Permissions-Policy", value: "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)" },
+      { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+    ];
     return [
+      { source: "/:path*", headers: security },
       {
         source: "/sw.js",
         headers: [

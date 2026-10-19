@@ -69,6 +69,12 @@ WEBAUTHN_RP_ID=<your-frontend-domain without https://>
 ... plus every shared variable above (including ADMIN_EMAIL), SMTP_*, VAPID_*, GOOGLE_*, ADMIN_PASSWORD
 ```
 
+With `ENVIRONMENT=production` the backend and worker refuse to start while `JWT_SECRET`, `INTERNAL_API_KEY` or the
+MCP tokens are example values or shorter than 24 characters, `ENCRYPTION_KEY` is empty, `ADMIN_PASSWORD` is shorter
+than 12 characters, or `COOKIE_SECURE` isn't `true`. The log names what to fix. Rate limits read the caller's IP from
+the right of `X-Forwarded-For`; Railway's edge appends one entry, which is the default `TRUSTED_PROXY_HOPS=1`. Raise it
+only if you put another proxy (e.g. a CDN) in front.
+
 `MIGRATION_DATABASE_URL` must use the `postgresql+asyncpg://` scheme. Copy Railway's URL and change the prefix.
 The app itself connects as `app_user`, a non-superuser role that the first migration creates. That way
 Postgres row level security actually applies (it is bypassed for superusers).
