@@ -86,6 +86,8 @@ const ERRORS: Record<string, string> = {
   invalid_code: "That code isn't right. Check the email and try again.",
   signup_expired: "That code has expired. Go back and sign up again.",
   slow_down: "You're sending messages too quickly.",
+  avatar_too_large: "That photo is too large. Try a smaller one.",
+  avatar_must_be_an_image: "Use a JPEG, PNG or WebP photo.",
 };
 
 export function errorText(err: unknown): string {

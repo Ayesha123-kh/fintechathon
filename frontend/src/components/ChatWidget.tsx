@@ -8,6 +8,7 @@ import useSWR from "swr";
 import { api, errorText, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { recordWav, type WavRecorder } from "@/lib/wav";
+import { UserPhoto, useMyAvatar } from "./Avatar";
 
 type Msg = { id: string; role: "user" | "bot" | "system"; sender: string; text: string; kind?: string; final: boolean; created_at: string | null };
 // Live progress of the assistant's turn: what it is thinking and which tool it is using. Never stored.
@@ -26,6 +27,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const params = useSearchParams();
   const router = useRouter();
   const { user } = useSession();
+  const { url: myPhoto } = useMyAvatar();
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -404,7 +406,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                       </div>
                     )}
                     <div className={startsGroup ? "mt-3 first:mt-0" : "mt-1"}>
-                      <Bubble m={m} first={startsGroup} last={endsGroup} />
+                      <Bubble m={m} first={startsGroup} last={endsGroup} myPhoto={myPhoto} />
                     </div>
                   </Fragment>
                 );
@@ -565,8 +567,20 @@ function AssistantAvatar({ size = "sm" }: { size?: "sm" | "lg" }) {
 }
 
 /** One side of the thread. The assistant's side keeps a column for its avatar so its bubbles line up. */
-function Row({ side, avatar, children }: { side: "left" | "right"; avatar?: boolean; children: React.ReactNode }) {
-  if (side === "right") return <div className="flex justify-end pl-12 sm:pl-16">{children}</div>;
+function Row({ side, avatar, photo, children }: {
+  side: "left" | "right"; avatar?: boolean; photo?: string | null; children: React.ReactNode;
+}) {
+  if (side === "right") {
+    // No profile photo: your bubbles as always. With one, it sits beside the last bubble of each run of your
+    // messages (like the assistant's sprout), and a spacer keeps the others aligned.
+    if (photo === undefined) return <div className="flex justify-end pl-12 sm:pl-16">{children}</div>;
+    return (
+      <div className="flex items-end justify-end gap-2 pl-12 sm:pl-16">
+        <div className="min-w-0">{children}</div>
+        {photo ? <UserPhoto src={photo} /> : <span className="w-8 shrink-0" aria-hidden />}
+      </div>
+    );
+  }
   return (
     <div className="flex items-end gap-2 pr-12 sm:pr-16">
       {avatar ? <AssistantAvatar /> : <span className="w-8 shrink-0" aria-hidden />}
@@ -575,12 +589,12 @@ function Row({ side, avatar, children }: { side: "left" | "right"; avatar?: bool
   );
 }
 
-function Bubble({ m, first, last }: { m: Msg; first: boolean; last: boolean }) {
+function Bubble({ m, first, last, myPhoto }: { m: Msg; first: boolean; last: boolean; myPhoto: string | null }) {
   const mine = m.role === "user";
   const stamp = time(m.created_at);
   if (mine) {
     return (
-      <Row side="right">
+      <Row side="right" photo={myPhoto ? (last ? myPhoto : null) : undefined}>
         <div className={clsx("chat-text rounded-2xl bg-forest px-4 pt-2.5 pb-1.5 text-[15px] leading-relaxed text-forest-ink shadow-sm",
           last && "rounded-br-md")}>
           <RichText text={m.text} />
