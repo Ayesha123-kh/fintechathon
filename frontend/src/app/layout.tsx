@@ -5,11 +5,11 @@ import { SessionProvider } from "@/lib/session";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
-// Bundled (latin, variable 200-800) so the build never has to reach Google Fonts.
-const jakarta = localFont({
-  src: "./fonts/PlusJakartaSans-latin.woff2",
-  weight: "200 800",
-  variable: "--font-jakarta",
+// Bundled (latin, variable 100-900) so the build never has to reach Google Fonts.
+const outfit = localFont({
+  src: "./fonts/Outfit-latin.woff2",
+  weight: "100 900",
+  variable: "--font-outfit",
   display: "swap",
 });
 
@@ -26,14 +26,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
-    { media: "(prefers-color-scheme: dark)", color: "#0D0D0D" },
+    { media: "(prefers-color-scheme: light)", color: "#F1EBE4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0F1513" },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={jakarta.variable} suppressHydrationWarning>
+    <html lang="en" className={outfit.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>

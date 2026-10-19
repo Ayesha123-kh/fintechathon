@@ -1,14 +1,13 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, Mail, MessageCircle, PiggyBank, Sparkles, Tag, Target } from "lucide-react";
+import clsx from "clsx";
+import { ChevronRight, Mail, MessageCircle, PiggyBank, Target } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import useSWR from "swr";
 import { AppShell, openSettings } from "@/components/AppShell";
-import { MobileTabBar, type Tab, useMobileTab } from "@/components/MobileTabBar";
 import { BankModal } from "@/components/BankModal";
-import { CategoryBars, Donut, ProgressRing, SplitDonut, SplitLegend } from "@/components/charts";
-import { GoalIconGlyph } from "@/components/GoalIcon";
+import { CategoryStack, ProgressRing } from "@/components/charts";
 import { Card, Empty, Spinner } from "@/components/ui";
 import { fetcher, rs } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -35,246 +34,252 @@ export default function DashboardPage() {
   return <AppShell onChatActivity={refresh}>{data ? <DashboardView d={data} /> : <div className="grid h-64 place-items-center"><Spinner /></div>}</AppShell>;
 }
 
+/** "Rs. 420k", "Rs. 1.2M": the short amounts used on goal tiles. */
+const short = (v: number | string) => {
+  const n = Number(v);
+  const fmt = (x: number) => x.toFixed(1).replace(/\.0$/, "");
+  if (Math.abs(n) >= 1_000_000) return `${fmt(n / 1_000_000)}M`;
+  if (Math.abs(n) >= 1_000) return `${fmt(n / 1_000)}k`;
+  return `${Math.round(n)}`;
+};
+const day = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const monthYear = (d: string) => new Date(d).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+const title = "text-xl font-bold tracking-tight text-ink sm:text-2xl";
+
 function DashboardView({ d }: { d: Dashboard }) {
   const { user } = useSession();
   const [bank, setBank] = useState<string | null>(null);
-  const [tab, setTab] = useMobileTab();
-  // On phones only the active tab's sections are shown; laptops always show everything.
-  const on = (t: Tab) => (tab === t ? "" : "max-md:hidden");
-  const first = user?.full_name?.split(" ")[0];
   const hasData = d.banks.length > 0 || d.goals.length > 0;
+  const total = Number(d.total_balance);
+  const savedShare = total > 0 ? Number(d.total_savings) / total : 0;
 
   return (
-    <>
-    {/* Outside the spaced container: a fixed bar must not pick up its children's margins. */}
-    <MobileTabBar tab={tab} onChange={setTab} />
-    <div className="space-y-5 max-md:pb-24">
+    <div className="space-y-5 sm:space-y-6">
       {bank && <BankModal accountId={bank} onClose={() => setBank(null)} />}
-      <div className={on("home")}>
-        <p className="text-sm text-muted">Assalam o Alaikum{first ? `, ${first}` : ""}</p>
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Your money at a glance</h1>
-      </div>
 
-      {!user?.onboarding_completed && tab === "home" && (
-        <Link href="?chat=1" className="flex items-center gap-4 rounded-[var(--radius-card)] bg-forest p-5 text-forest-ink">
-          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-ink">
+      {!user?.onboarding_completed && (
+        <Link href="?chat=1" className="flex items-center gap-4 rounded-[var(--radius-card)] bg-forest p-5 text-forest-ink sm:px-7">
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-ink">
             <MessageCircle className="size-6" aria-hidden />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold">Let&apos;s set up your plan</p>
-            <p className="text-sm opacity-85">Chat with your assistant about your banks, cards and goals. It takes 3 minutes.</p>
-          </div>
+          </span>
+          <span className="flex-1">
+            <span className="block font-semibold">Let&apos;s set up your plan</span>
+            <span className="block text-sm text-forest-muted">Chat with your assistant about your banks, cards and goals. It takes 3 minutes.</span>
+          </span>
           <ChevronRight className="size-5" aria-hidden />
         </Link>
       )}
 
-      {/* Phones: amounts | circle on top, pills full width below. sm+: pills under the amounts, circle spans both. */}
-      <Card className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-4 md:p-7 ${on("home")}`}>
-        <div className="min-w-0 space-y-4">
-          <div>
-            <p className="text-sm text-muted">Total balance</p>
-            <p className="tabular text-2xl font-bold whitespace-nowrap sm:text-3xl md:text-4xl">{rs(d.total_balance)}</p>
-          </div>
-          <dl className="space-y-3">
-            <div>
-              <dt className="flex items-center gap-1.5 text-sm text-muted"><span className="size-2.5 rounded-full bg-chart-save" />Savings</dt>
-              <dd className="tabular text-lg font-bold whitespace-nowrap sm:text-xl">{rs(d.total_savings)}</dd>
-              <dd className="text-xs text-muted">Set aside for your goals</dd>
+      {/* Row 1: balance, then "saved this week" and "saved with deals" (beside it from tablets up, below it on phones). */}
+      <section id="home" data-section className="grid gap-4 sm:gap-5 md:grid-cols-[2fr_1fr] xl:grid-cols-[1.85fr_1fr]">
+        <div className="flex flex-col justify-between gap-6 rounded-[2rem] bg-forest p-6 text-forest-ink sm:p-8 lg:p-9">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[15px] text-forest-muted sm:text-lg">Total balance</p>
+              <p className="tabular mt-1 text-[2.5rem] leading-none font-bold tracking-tight whitespace-nowrap sm:mt-2 sm:text-5xl xl:text-7xl">
+                {rs(d.total_balance)}
+              </p>
             </div>
-            <div>
-              <dt className="flex items-center gap-1.5 text-sm text-muted"><span className="size-2.5 rounded-full bg-chart-spend ring-1 ring-forest/30" />Spendable</dt>
-              <dd className="tabular text-lg font-bold whitespace-nowrap sm:text-xl">{rs(d.expendable)}</dd>
-              <dd className="text-xs text-muted">Spent {rs(d.spent_this_month, { compact: true })} this month</dd>
+            <span className="xl:hidden">
+              <ProgressRing value={savedShare} size={84} thickness={11} label={`${Math.round(savedShare * 100)}% of your balance is saved`}
+                trackClassName="stroke-forest-track" barClassName="stroke-primary">
+                <span className="tabular text-xl font-bold xl:text-[1.75rem]">{Math.round(savedShare * 100)}%</span>
+              </ProgressRing>
+            </span>
+            <span className="hidden xl:block">
+              <ProgressRing value={savedShare} size={128} thickness={15} label={`${Math.round(savedShare * 100)}% of your balance is saved`}
+                trackClassName="stroke-forest-track" barClassName="stroke-primary">
+                <span className="tabular text-xl font-bold xl:text-[1.75rem]">{Math.round(savedShare * 100)}%</span>
+              </ProgressRing>
+            </span>
+          </div>
+          <dl className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="rounded-2xl bg-forest-2 px-4 py-3.5 sm:px-5 sm:py-4">
+              <dt className="flex items-center gap-2 text-sm text-forest-muted sm:text-base">
+                <span className="size-2.5 rounded-full bg-primary sm:size-3" aria-hidden />Savings
+              </dt>
+              <dd className="tabular mt-1 text-lg font-bold whitespace-nowrap sm:text-2xl">{rs(d.total_savings)}</dd>
+            </div>
+            <div className="rounded-2xl bg-forest-2 px-4 py-3.5 sm:px-5 sm:py-4">
+              <dt className="flex items-center gap-2 text-sm text-forest-muted sm:text-base">
+                <span className="size-2.5 rounded-full border-[1.5px] border-forest-muted sm:size-3" aria-hidden />Spendable
+              </dt>
+              <dd className="tabular mt-1 text-lg font-bold whitespace-nowrap sm:text-2xl">{rs(d.expendable)}</dd>
             </div>
           </dl>
         </div>
-        <div className="sm:hidden"><Donut
-          size={136}
-          thickness={16}
-          label={`Total ${rs(d.total_balance)}: savings ${rs(d.total_savings)}, spendable ${rs(d.expendable)}`}
-          segments={[
-            { key: "s", label: "Savings", value: Number(d.total_savings), className: "stroke-chart-save" },
-            { key: "e", label: "Spendable", value: Number(d.expendable), className: "stroke-chart-spend" },
-          ]}
-          center={
-            <div>
-              <p className="text-[11px] text-muted">Total</p>
-              <p className="tabular text-lg font-bold">{rs(d.total_balance, { compact: true })}</p>
-              <p className="text-[11px] text-muted">
-                {Number(d.total_balance) ? Math.round((Number(d.total_savings) / Number(d.total_balance)) * 100) : 0}% saved
-              </p>
-            </div>
-          }
-        /></div>
-        <div className="hidden sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:block"><Donut
-          size={200}
-          thickness={22}
-          label={`Total ${rs(d.total_balance)}: savings ${rs(d.total_savings)}, spendable ${rs(d.expendable)}`}
-          segments={[
-            { key: "s", label: "Savings", value: Number(d.total_savings), className: "stroke-chart-save" },
-            { key: "e", label: "Spendable", value: Number(d.expendable), className: "stroke-chart-spend" },
-          ]}
-          center={
-            <div>
-              <p className="text-[11px] text-muted">Total</p>
-              <p className="tabular text-lg font-bold">{rs(d.total_balance, { compact: true })}</p>
-              <p className="text-[11px] text-muted">
-                {Number(d.total_balance) ? Math.round((Number(d.total_savings) / Number(d.total_balance)) * 100) : 0}% saved
-              </p>
-            </div>
-          }
-        /></div>
-        <div className="col-span-2 flex flex-wrap gap-2 text-sm sm:col-span-1 sm:col-start-1">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 font-semibold whitespace-nowrap text-primary-ink">
-            <Sparkles className="size-3.5" aria-hidden /> {rs(d.saved_this_week)} saved this week
-          </span>
-          {Number(d.deal_savings_total) > 0 && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-forest/30 bg-surface-2 px-3 py-1 whitespace-nowrap">
-              <Tag className="size-3.5" aria-hidden /> {rs(d.deal_savings_total)} saved with deals
-            </span>
-          )}
+
+        <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-1">
+          <div className="flex flex-col justify-center rounded-[2rem] bg-primary p-5 text-primary-ink sm:p-7">
+            <p className="text-sm font-semibold sm:text-base">Saved this week</p>
+            <p className="tabular mt-1 text-2xl font-bold tracking-tight whitespace-nowrap sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.saved_this_week)}</p>
+            <p className="mt-1 text-xs sm:mt-2 sm:text-base">
+              {Number(d.saved_this_week) > 0 ? <>Great going<span className="max-xl:hidden">, keep it up</span>!</> : "Your next salary starts it off."}
+            </p>
+          </div>
+          <div className="flex flex-col justify-center rounded-[2rem] bg-surface p-5 sm:p-7">
+            <p className="text-sm text-muted sm:text-base">Saved with deals</p>
+            <p className="tabular mt-1 text-2xl font-bold tracking-tight whitespace-nowrap text-ink sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.deal_savings_total)}</p>
+            <p className="mt-1 text-xs text-muted sm:mt-2 sm:text-base">From card discounts</p>
+          </div>
         </div>
-      </Card>
+      </section>
 
       {!d.email_connected && hasData && (
-        <button type="button" onClick={() => openSettings("email")} className={`flex w-full items-center gap-3 text-left ${on("home")} rounded-[var(--radius-card)] border border-dashed border-forest/40 bg-surface p-4`}>
-          <Mail className="size-5 text-forest dark:text-primary" aria-hidden />
-          <p className="flex-1 text-sm"><span className="font-semibold">Connect your email</span> to track bank transactions automatically.</p>
-          <ChevronRight className="size-4 text-muted" aria-hidden />
+        <button type="button" onClick={() => openSettings("email")}
+          className="flex w-full items-center gap-3 rounded-[var(--radius-card)] bg-surface p-4 text-left sm:px-7">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-badge text-forest dark:text-primary">
+            <Mail className="size-5" aria-hidden />
+          </span>
+          <span className="flex-1 text-sm sm:text-base"><span className="font-semibold">Connect your email</span> to track bank transactions automatically.</span>
+          <ChevronRight className="size-5 text-muted" aria-hidden />
         </button>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-5">
-        <div className="space-y-5 lg:col-span-3">
-          <Card className={on("goals")}>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Goals</h2>
-              <Target className="size-5 text-muted" aria-hidden />
-            </div>
-            {d.goals.length === 0 ? (
-              <Empty icon={<Target className="size-6" />} title="No goals yet"
-                body="Tell your assistant what you're saving for, like “a car in 6 months”."
-                action={<Link href="?chat=1" className="mt-2 text-sm font-semibold text-forest dark:text-primary">Add a goal in chat</Link>} />
-            ) : (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {d.goals.map((g) => (
-                  <li key={g.id}>
-                    <Link href={`/goals/${g.id}`}
-                      className="flex h-full flex-col items-center gap-2 rounded-2xl border-2 border-forest dark:border-primary bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
-                      <ProgressRing value={g.progress} size={88} thickness={9} label={`${g.name} progress`}>
-                        <div className="flex flex-col items-center">
-                          <GoalIconGlyph name={g.icon} />
-                          <span className="tabular text-sm font-bold">{Math.round(g.progress * 100)}%</span>
-                        </div>
-                      </ProgressRing>
-                      <p className="line-clamp-2 text-sm font-semibold leading-tight">{g.name}</p>
-                      <p className="tabular text-xs text-muted">{rs(g.saved, { compact: true })} / {rs(g.target, { compact: true })}</p>
-                      {g.status === "completed" ? (
-                        <p className="text-xs font-semibold text-forest dark:text-primary">Completed 🎉</p>
-                      ) : (
-                        <p className="text-[11px] text-muted">
-                          {g.deadline ? `by ${new Date(g.deadline).toLocaleDateString("en-PK", { month: "short", year: "numeric" })}` : "No deadline"}
-                          {Number(g.monthly_needed) > 0 && ` · ${rs(g.monthly_needed, { compact: true })}/mo`}
-                        </p>
-                      )}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+      {/*
+        One grid for the rest, in reading order. Phones: one column. Tablets: goals full width, then pairs.
+        Wide laptops (12 columns, from 1380px): goals + spending, then banks, deals and activity side by side.
+      */}
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 min-[1380px]:grid-cols-12">
+        <Goals goals={d.goals} />
 
-          <Card className={on("home")}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-bold">Where your money is</h2>
-              <SplitLegend />
-            </div>
-            {d.banks.length === 0 ? (
-              <Empty icon={<PiggyBank className="size-6" />} title="No banks added" body="Tell your assistant which banks and wallets you use." />
-            ) : (
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {d.banks.map((b) => (
-                  <li key={b.account_id}>
-                    <button type="button" onClick={() => setBank(b.account_id)} aria-label={`${b.bank} details`}
-                      className="flex h-full w-full flex-col items-center gap-2 rounded-2xl border-2 border-forest dark:border-primary bg-surface-2 p-4 text-center transition hover:brightness-[0.98]">
-                      <SplitDonut savings={Number(b.savings)} expendable={Number(b.expendable)} label={b.bank} size={96} thickness={12} />
-                      <p className="text-sm font-semibold">{b.bank_short}</p>
-                      <dl className="tabular grid w-full grid-cols-2 gap-1 text-[11px]">
-                        <div><dt className="text-muted">Savings</dt><dd className="font-semibold whitespace-nowrap">{rs(b.savings, { compact: true })}</dd></div>
-                        <div><dt className="text-muted">Spendable</dt><dd className="font-semibold whitespace-nowrap">{rs(b.expendable, { compact: true })}</dd></div>
-                      </dl>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+        <Card id="spending" data-section className="min-[1380px]:col-span-5">
+          <h2 className={title}>Spending this month</h2>
+          <p className="tabular mt-1 text-[15px] text-muted sm:text-base">
+            {Number(d.income_this_month) > 0 ? `${rs(d.spent_this_month)} of ${rs(d.income_this_month)}` : `${rs(d.spent_this_month)} spent so far`}
+          </p>
+          <div className="mt-6">
+            {d.spending_by_category.length === 0
+              ? <p className="text-sm text-muted">No spending recorded yet this month.</p>
+              : <CategoryStack rows={d.spending_by_category} />}
+          </div>
+        </Card>
 
-          <Card className={on("activity")}>
-            <h2 className="mb-3 text-lg font-bold">Recent activity</h2>
-            {d.recent_transactions.length === 0 ? (
-              <p className="py-4 text-sm text-muted">Transactions from your bank emails or chat appear here.</p>
-            ) : (
-              <ul className="divide-y divide-line md:-mr-2 md:max-h-[22rem] md:overflow-y-auto md:overscroll-contain md:pr-2">
-                {d.recent_transactions.map((t) => (
-                  <li key={t.id} className="flex items-center gap-3 py-2.5">
-                    <span className="grid size-9 place-items-center rounded-full bg-surface-2">
-                      {t.direction === "credit" ? <ArrowDownLeft className="size-4 text-forest dark:text-primary" aria-label="Money in" /> : <ArrowUpRight className="size-4 text-muted" aria-label="Money out" />}
+        <Card id="banks" data-section className="min-[1380px]:col-span-4">
+          <h2 className={clsx(title, "mb-5")}>Your banks</h2>
+          {d.banks.length === 0 ? (
+            <Empty icon={<PiggyBank className="size-6" />} title="No banks added" body="Tell your assistant which banks and wallets you use." />
+          ) : (
+            <ul className="space-y-1">
+              {d.banks.map((b) => (
+                <li key={b.account_id}>
+                  <button type="button" onClick={() => setBank(b.account_id)} aria-label={`${b.bank} details`}
+                    className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-2xl p-2 text-left transition hover:bg-hover">
+                    <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-badge text-xs font-bold text-forest uppercase dark:text-primary sm:size-14 sm:text-sm">
+                      {b.bank_short.slice(0, 4)}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{t.merchant || (t.direction === "credit" ? "Money in" : "Payment")}</p>
-                      <p className="text-xs capitalize text-muted">{t.category} · {new Date(t.occurred_at).toLocaleDateString("en-PK", { day: "numeric", month: "short" })}</p>
-                    </div>
-                    <p className="tabular text-sm font-semibold">{t.direction === "credit" ? "+" : "−"}{rs(t.amount)}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </div>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-ink sm:text-lg">{b.bank}</span>
+                      <span className="tabular block text-sm text-muted">{rs(b.savings)} saved</span>
+                    </span>
+                    <span className="tabular font-bold whitespace-nowrap text-ink sm:text-lg">{rs(b.balance)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
-        <div className="space-y-5 lg:col-span-2">
-          <Card className={on("spending")}>
-            <h2 className="mb-4 text-lg font-bold">Spending this month</h2>
-            {d.spending_by_category.length === 0 ? (
-              <p className="py-4 text-sm text-muted">No spending recorded yet this month.</p>
-            ) : (
-              <CategoryBars rows={d.spending_by_category} />
-            )}
-          </Card>
+        <Card id="deals" data-section className="bg-deal-bg! min-[1380px]:col-span-4">
+          <h2 className={clsx(title, "mb-5")}>Deals for your cards</h2>
+          {d.deals_for_you.length === 0 ? (
+            <p className="text-sm text-muted">We&apos;re collecting discounts for your cards. Check back soon.</p>
+          ) : (
+            <ul className="space-y-3">
+              {d.deals_for_you.map((deal) => (
+                <li key={deal.id} className="flex items-center gap-3.5 rounded-2xl bg-surface p-3"
+                  title={deal.your_eligible_cards[0] ? `With your ${deal.your_eligible_cards[0]}` : "Any card or cash"}>
+                  <span className="tabular grid h-12 min-w-[4.75rem] shrink-0 place-items-center rounded-xl bg-deal px-2 text-[15px] font-bold text-white">
+                    {deal.discount_type === "percent" && deal.discount_value ? `${deal.discount_value}%`
+                      : deal.discount_type === "flat" && deal.discount_value ? rs(deal.discount_value, { compact: true })
+                        : deal.discount_type === "bogo" ? "1+1" : "Deal"}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold text-ink sm:text-lg">{deal.merchant}</span>
+                    <span className="line-clamp-2 text-sm text-muted">
+                      {deal.title}{deal.valid_until && ` · till ${day(deal.valid_until)}`}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
-          <Card className={on("deals")}>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Deals for you</h2>
-              <Tag className="size-5 text-muted" aria-hidden />
-            </div>
-            {d.deals_for_you.length === 0 ? (
-              <p className="py-4 text-sm text-muted">We&apos;re collecting discounts for your cards. Check back soon.</p>
-            ) : (
-              <ul className="space-y-2.5">
-                {d.deals_for_you.map((deal) => (
-                  <li key={deal.id} className="rounded-2xl border-2 border-forest dark:border-primary bg-surface-2 p-3.5">
-                    <div className="flex items-start gap-3">
-                      <span className="tabular grid min-w-14 place-items-center rounded-xl bg-primary px-2 py-1.5 text-sm font-bold text-primary-ink">
-                        {deal.discount_type === "percent" && deal.discount_value ? `${deal.discount_value}%` : deal.discount_type === "flat" && deal.discount_value ? rs(deal.discount_value, { compact: true }) : deal.discount_type === "bogo" ? "1+1" : "Deal"}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">{deal.merchant}</p>
-                        <p className="text-sm text-ink-2">{deal.title}</p>
-                        <p className="mt-1 text-xs text-muted">
-                          {deal.your_eligible_cards[0] ? `With your ${deal.your_eligible_cards[0]}` : "Any card or cash"}
-                          {deal.valid_until && ` · until ${new Date(deal.valid_until).toLocaleDateString("en-PK", { day: "numeric", month: "short" })}`}
-                        </p>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </div>
+        <Card className="min-[1380px]:col-span-4">
+          <h2 className={clsx(title, "mb-4")}>Recent activity</h2>
+          {d.recent_transactions.length === 0 ? (
+            <p className="text-sm text-muted">Transactions from your bank emails or chat appear here.</p>
+          ) : (
+            <ul className="divide-y divide-line md:-mr-2 md:max-h-[24rem] md:overflow-y-auto md:overscroll-contain md:pr-2">
+              {d.recent_transactions.map((t) => (
+                <li key={t.id} className="flex items-start justify-between gap-3 py-3.5 first:pt-0">
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-ink sm:text-lg">{t.merchant || (t.direction === "credit" ? "Money in" : "Payment")}</span>
+                    <span className="block text-sm text-muted capitalize">{t.category} · {day(t.occurred_at)}</span>
+                  </span>
+                  <span className="tabular font-bold whitespace-nowrap text-ink sm:text-lg">
+                    {t.direction === "credit" ? "+" : "−"} {rs(t.amount)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
       </div>
     </div>
-    </>
+  );
+}
+
+/** Goal tiles with a progress ring: three across from tablets up, a list with the % inside the ring on phones. */
+function Goals({ goals }: { goals: Dashboard["goals"] }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? goals : goals.slice(0, 3);
+  const when = (g: Dashboard["goals"][number]) =>
+    g.status === "completed" ? "Completed" : g.deadline ? monthYear(g.deadline) : "Anytime";
+  return (
+    <Card id="goals" data-section className="md:col-span-2 min-[1380px]:col-span-7">
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className={title}>Goals</h2>
+        {goals.length > 3 && (
+          <button onClick={() => setAll((v) => !v)} className="text-[15px] font-semibold text-forest hover:underline dark:text-primary sm:text-base">
+            {all ? "Show less" : "See all"}
+          </button>
+        )}
+      </div>
+      {goals.length === 0 ? (
+        <Empty icon={<Target className="size-6" />} title="No goals yet"
+          body="Tell your assistant what you're saving for, like “a car in 6 months”."
+          action={<Link href="?chat=1" className="mt-2 text-sm font-semibold text-forest dark:text-primary">Add a goal in chat</Link>} />
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+          {shown.map((g) => (
+            <li key={g.id}>
+              <Link href={`/goals/${g.id}`}
+                className="flex h-full items-center gap-4 rounded-[1.25rem] bg-surface-2 p-4 transition hover:brightness-[0.98] sm:flex-col sm:items-start sm:gap-0 sm:p-5">
+                <span className="sm:hidden">
+                  <ProgressRing value={g.progress} size={56} thickness={6} label={`${g.name} progress`}>
+                    <span className="tabular text-sm font-bold text-ink">{Math.round(g.progress * 100)}%</span>
+                  </ProgressRing>
+                </span>
+                <span className="hidden sm:block">
+                  <ProgressRing value={g.progress} size={76} thickness={8} label={`${g.name}: ${Math.round(g.progress * 100)}% saved`}>
+                    <span />
+                  </ProgressRing>
+                </span>
+                <span className="min-w-0 flex-1 sm:mt-5">
+                  <span className="block truncate font-bold text-ink sm:text-xl">{g.name}</span>
+                  <span className="tabular mt-0.5 block text-sm text-muted sm:mt-1.5 sm:text-base">Rs. {short(g.saved)} of {short(g.target)}</span>
+                  <span className="mt-1 hidden text-sm text-muted sm:block">
+                    {g.deadline && g.status !== "completed" ? `by ${monthYear(g.deadline)}` : when(g)}
+                  </span>
+                </span>
+                <span className="text-sm text-muted sm:hidden">{when(g)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
