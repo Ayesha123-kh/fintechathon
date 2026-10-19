@@ -12,6 +12,7 @@ import { currentSubscription, disablePush, enablePush, pushSupported } from "@/l
 import { useSession } from "@/lib/session";
 import { applyTheme, getTheme, type ThemeChoice } from "@/lib/theme";
 import { ChatWidget } from "./ChatWidget";
+import type { Dashboard } from "./dashboard/sections";
 import { EmailSettings } from "./EmailSettings";
 import { BottomNav, navTransitionPending, Sidebar } from "./SectionNav";
 import { Button, Logo, Spinner } from "./ui";
@@ -57,6 +58,9 @@ export function AppShell({ children, onChatActivity, sidebar }: {
   }, []);
   const isAdmin = user?.role === "admin"; // admins only have the admin dashboard: no chat, email, push or finances
   const { data: me } = useSWR<{ test_tools?: boolean }>(status === "active" && !isAdmin ? "/me" : null, fetcher);
+  // Colours the month pill. Same key as the dashboard pages' data, so it adds no request there.
+  const { data: dash } = useSWR<Pick<Dashboard, "salary_credited_this_month">>(
+    status === "active" && !isAdmin ? "/dashboard" : null, fetcher);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -113,8 +117,15 @@ export function AppShell({ children, onChatActivity, sidebar }: {
       <span className="hidden xl:inline">Test bank email</span>
     </button>
   );
+  // Deep green once this month's salary has been credited, peach while it hasn't (cream until that's known).
+  const salary = dash?.salary_credited_this_month;
   const datePill = (
-    <span className="inline-flex h-11 items-center rounded-full bg-surface px-5 text-[15px] text-ink">{month}</span>
+    <span title={salary === undefined ? undefined : salary ? "Salary credited this month" : "Salary not credited yet this month"}
+      className={clsx("inline-flex h-11 items-center rounded-full px-5 text-[15px] transition-colors",
+        salary === undefined ? "bg-surface text-ink" : salary ? "bg-forest text-forest-ink" : "bg-primary text-primary-ink")}>
+      {month}
+      {salary !== undefined && <span className="sr-only">{salary ? ", salary credited" : ", salary not credited yet"}</span>}
+    </span>
   );
   return (
     <div className="flex min-h-dvh w-full gap-6 p-4 sm:p-5 lg:gap-8">
