@@ -1,26 +1,21 @@
 @import "tailwindcss";
 
-/* `dark:` follows the in-app choice (data-theme on <html>), else the device setting. */
+/* `dark:` applies only when someone picks Dark in Settings; the device's dark mode does not switch the app. */
 @custom-variant dark {
   &:where([data-theme="dark"], [data-theme="dark"] *) {
     @slot;
   }
-  @media (prefers-color-scheme: dark) {
-    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
-      @slot;
-    }
-  }
 }
 
-/* Palette sampled from the dashboard reference: warm beige page, cream cards, deep green, peach accent. */
+/* Palette sampled from the dashboard reference: warm beige page, cream cards, brown sidebar, deep green, peach accent. */
 :root {
-  --bg: #f1ebe4;
-  --surface: #faf7ef;
-  --surface-2: #f4ede1;
-  --ink: #101a14;
-  --ink-2: #3e4740;
-  --muted: #5b635b;
-  --line: #e6ddcf;
+  --bg: #ece4d2;
+  --surface: #f7f0e5;
+  --surface-2: #f0e5d4;
+  --ink: #211913;
+  --ink-2: #43382f;
+  --muted: #645949;
+  --line: #e2d5c1;
   --primary: #f2b49b;
   --primary-ink: #3a1200;
   --forest: #16423c;
@@ -28,66 +23,44 @@
   --forest-track: #2c6158;
   --forest-ink: #ffffff;
   --forest-muted: #bdd7ce;
-  --side: #18221e;
-  --side-2: #22332f;
-  --side-ink: #ced7d4;
-  --badge: #ebe2d3;
+  --side: #29211b;
+  --side-2: #3a2e27;
+  --side-ink: #dcd2c8;
+  --badge: #e8d9c3;
   --deal: #c5583d;
   --deal-bg: #fcede7;
   --alert: #e17b60;
   --danger: #b42318;
   --chart-save: #16423c;
   --chart-spend: #f2b49b;
-  --chart-track: #e5dccd;
+  --chart-track: #e1d2bc;
   --cat-1: #16423c;
   --cat-2: #4f8a7b;
   --cat-3: #9cc3b6;
   --cat-4: #e0795f;
   --cat-5: #f2b49b;
-  --hover: #ede5d8;
+  --hover: #e9decb;
 }
 
-/* Dark: the same hues on a deep green-black page. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #0f1513;
-    --surface: #18221e;
-    --surface-2: #1f2b27;
-    --ink: #f3efe8;
-    --ink-2: #cbd1cc;
-    --muted: #949d97;
-    --line: #2a3833;
-    --side: #0b100e;
-    --side-2: #18221e;
-    --badge: #26332f;
-    --deal-bg: #2a1d18;
-    --danger: #f97066;
-    --chart-save: #9cc3b6;
-    --chart-track: #2a3833;
-    --cat-1: #2f7a6d;
-    --hover: #24302c;
-  }
-}
-
+/* Dark, only when chosen in Settings: the same hues on deep brown. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0f1513;
-  --surface: #18221e;
-  --surface-2: #1f2b27;
-  --ink: #f3efe8;
-  --ink-2: #cbd1cc;
-  --muted: #949d97;
-  --line: #2a3833;
-  --side: #0b100e;
-  --side-2: #18221e;
-  --badge: #26332f;
-  --deal-bg: #2a1d18;
+  --bg: #15110e;
+  --surface: #221b16;
+  --surface-2: #2b231d;
+  --ink: #f3ece2;
+  --ink-2: #d6ccc0;
+  --muted: #a2968a;
+  --line: #3a3029;
+  --side: #0e0b09;
+  --side-2: #221b16;
+  --badge: #33291f;
+  --deal-bg: #2e1f19;
   --danger: #f97066;
   --chart-save: #9cc3b6;
-  --chart-track: #2a3833;
+  --chart-track: #3a3029;
   --cat-1: #2f7a6d;
-  --hover: #24302c;
+  --hover: #2e261f;
 }
 
 @theme inline {
