@@ -28,6 +28,18 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   // Latest message that arrived while the chat was closed, shown as a bubble next to the chat button.
   const [preview, setPreview] = useState<Msg | null>(null);
 
+  // Phones: the chat icon in the top bar (AppShell) toggles the chat and shows the unread count and open state.
+  useEffect(() => {
+    const toggle = () => (openRef.current ? closeRef.current() : setOpen(true));
+    window.addEventListener("bachat:toggle-chat", toggle);
+    return () => window.removeEventListener("bachat:toggle-chat", toggle);
+  }, []);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("bachat:chat-state", { detail: open && !closing }));
+  }, [open, closing]);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("bachat:chat-unread", { detail: unread }));
+  }, [unread]);
   // Only one drop-down at a time: opening the chat closes settings, and settings opening closes the chat.
   useEffect(() => {
     if (open) window.dispatchEvent(new Event("bachat:close-sheet"));
@@ -52,17 +64,16 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   const openRef = useRef(open);
   openRef.current = open;
 
-  // On phones the chat covers the screen: freeze the page underneath so only the messages scroll.
-  // (position: fixed is what stops iOS Safari from scrolling the body behind an overlay.)
+  // On phones the chat pops up over the page: stop the page underneath from scrolling so only the messages do.
+  // overflow (not position: fixed on the body) keeps the sticky top bar, and its chat icon, where it is; the
+  // backdrop's touch-none covers iOS Safari, which ignores overflow for touch scrolling.
   useEffect(() => {
     if (!open || !window.matchMedia("(max-width: 639px)").matches) return;
-    const y = window.scrollY;
-    const body = document.body.style;
-    const prev = { position: body.position, top: body.top, left: body.left, right: body.right, overflow: body.overflow };
-    Object.assign(body, { position: "fixed", top: `-${y}px`, left: "0", right: "0", overflow: "hidden" });
+    const html = document.documentElement.style;
+    const prev = { overflow: html.overflow, overscroll: html.overscrollBehavior };
+    Object.assign(html, { overflow: "hidden", overscrollBehavior: "none" });
     return () => {
-      Object.assign(body, prev);
-      window.scrollTo(0, y);
+      Object.assign(html, { overflow: prev.overflow, overscrollBehavior: prev.overscroll });
     };
   }, [open]);
 
@@ -226,10 +237,10 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
 
   return (
     <>
-      {/* Latest message that arrived while the chat was closed: beside the button on wider screens, above it on phones. */}
+      {/* Latest message that arrived while the chat was closed: beside the button on wider screens, under the top bar's chat icon on phones. */}
       {!open && preview && (
         <div role="status" aria-live="polite"
-          className="bubble-pop fixed right-4 bottom-[calc(var(--bottom-nav)+6.5rem)] z-40 w-[min(22rem,calc(100vw-2rem))] sm:right-[6.75rem] sm:bottom-[calc(var(--bottom-nav)+1.5rem)]">
+          className="bubble-pop fixed right-4 z-40 w-[min(22rem,calc(100vw-2rem))] max-sm:top-[calc(max(0.75rem,env(safe-area-inset-top))+3.75rem)] sm:right-[6.75rem] sm:bottom-[calc(var(--bottom-nav)+1.5rem)]">
           <button onClick={() => setOpen(true)}
             className="relative block w-full rounded-2xl bg-surface px-5 py-4 text-left shadow-[0_12px_32px_rgb(16_26_20/0.12)] transition hover:brightness-[0.98]">
             <span className="mb-0.5 flex items-center gap-1 pr-6 text-sm font-bold text-forest dark:text-primary">
@@ -245,9 +256,9 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
         </div>
       )}
 
-      {/* Fixed to the viewport's bottom-right corner, lifted above the bottom nav on phones and tablets. */}
+      {/* Tablets and laptops: fixed to the viewport's bottom-right corner (above the bottom nav on tablets). Phones use the top bar's chat icon. */}
       {!open && (
-        <div className="group fixed right-4 bottom-[calc(var(--bottom-nav)+1rem)] z-40 sm:right-6 sm:bottom-[calc(var(--bottom-nav)+1.5rem)]">
+        <div className="group fixed right-6 bottom-[calc(var(--bottom-nav)+1.5rem)] z-40 max-sm:hidden">
           <button
             onClick={() => setOpen(true)}
             aria-label={unread ? `Open chat, ${unread} unread` : "Open chat with your assistant"}
@@ -270,11 +281,12 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
       )}
 
       {open && (
+        // Phones: a popup between the top bar and the bottom nav, which stay visible and usable above its backdrop.
         <div role="dialog" aria-label="Chat"
-          className="fixed inset-0 z-50 flex items-stretch justify-center pt-[env(safe-area-inset-top)] sm:inset-auto sm:right-6 sm:bottom-6 sm:pt-0">
+          className="fixed inset-0 z-[35] sm:inset-auto sm:right-6 sm:bottom-6 sm:z-50">
           <div className={clsx("absolute inset-0 touch-none bg-ink/30 sm:hidden", closing && "fade-closing")} onClick={close} />
-          <div className={clsx("pop-br relative flex h-full w-full min-w-0 sm:h-auto sm:w-auto", closing && "is-closing")}>
-          <section className="relative flex h-full w-full min-w-0 flex-col overflow-hidden bg-surface shadow-2xl sm:h-[min(780px,calc(100dvh-3rem))] sm:w-[min(500px,calc(100vw-3rem))] sm:rounded-[var(--radius-card)] lg:w-[540px]">
+          <div className={clsx("pop-chat absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.75rem)] bottom-[calc(var(--bottom-nav)+0.5rem)] flex min-w-0 sm:static sm:inset-auto", closing && "is-closing")}>
+          <section className="relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-2xl sm:h-[min(780px,calc(100dvh-3rem))] sm:w-[min(500px,calc(100vw-3rem))] lg:w-[540px]">
             <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3.5 sm:px-5 sm:py-4">
               <span className="relative">
                 <AssistantAvatar size="lg" />

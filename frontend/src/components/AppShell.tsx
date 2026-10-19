@@ -1,8 +1,9 @@
 "use client";
 
 import clsx from "clsx";
-import { Bell, Fingerprint, FlaskConical, LogOut, Moon, Shield, Sun, X } from "lucide-react";
+import { Bell, Fingerprint, FlaskConical, LogOut, MessageCircleMore, Moon, Shield, Sun, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
 import { api, errorText, fetcher } from "@/lib/api";
@@ -24,6 +25,7 @@ type EmailResult = { connected?: boolean; error?: string };
 
 export function AppShell({ children, onChatActivity }: { children: React.ReactNode; onChatActivity?: () => void }) {
   const { status, user } = useSession();
+  const pathname = usePathname();
   const [sheet, setSheet] = useState<"" | "settings">("");
   const [settingsClosing, setSettingsClosing] = useState(false);
   const settingsShown = sheet === "settings" && !settingsClosing;
@@ -82,6 +84,25 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
     window.dispatchEvent(new Event("bachat:close-chat")); // only one panel open at a time
     setSheet("settings");
   };
+  const avatar = (size: string) => (
+    <button onClick={toggleSettings}
+      aria-label={settingsShown ? "Close settings" : "Account and settings"} aria-expanded={settingsShown}
+      title={user.full_name || user.email}
+      className={clsx("relative grid shrink-0 place-items-center rounded-full bg-forest font-bold tracking-wide text-forest-ink transition hover:brightness-110", size)}>
+      <span aria-hidden className={clsx("transition-all duration-300", settingsShown && "scale-50 -rotate-90 opacity-0")}>
+        {initials(user.full_name || user.email)}
+      </span>
+      <X aria-hidden className={clsx("absolute size-5 transition-all duration-300",
+        settingsShown ? "scale-100 rotate-0 opacity-100" : "scale-50 rotate-90 opacity-0")} />
+    </button>
+  );
+  const testAlert = me?.test_tools && (
+    <button onClick={sendTestAlert} disabled={sending} aria-label="Send a test bank email" title="Send a test bank email"
+      className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink-2 hover:bg-hover disabled:opacity-50">
+      <FlaskConical className={clsx("size-5", sending && "animate-pulse")} aria-hidden />
+      <span className="hidden xl:inline">Test bank email</span>
+    </button>
+  );
   const datePill = (
     <span className="inline-flex h-11 items-center rounded-full bg-surface px-5 text-[15px] text-ink">{month}</span>
   );
@@ -89,37 +110,37 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
     <div className="flex min-h-dvh w-full gap-6 p-4 sm:p-5 lg:gap-8">
       <Sidebar />
       <div className="min-w-0 flex-1 pb-[calc(var(--bottom-nav)+5.5rem)] lg:pb-28">
-        <header className="flex items-center gap-3 pt-1 pb-5 sm:pb-6 lg:pt-0">
-          {/* The logo lives in the sidebar on laptops; phones and tablets show it next to the greeting. */}
+        {/* Phones: a top bar that stays put, with the avatar left, the logo centred and the chat icon right. */}
+        <header className="sticky top-0 z-40 -mx-4 -mt-4 mb-4 grid grid-cols-[1fr_auto_1fr] items-center bg-bg/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur sm:hidden">
+          <div>{avatar("size-11 text-sm")}</div>
+          <Link href="/dashboard" aria-label="Saving home"><Logo size={34} nameClassName="text-xl text-ink" /></Link>
+          <div className="flex items-center justify-end gap-0.5">
+            {testAlert}
+            <PhoneChatButton />
+          </div>
+        </header>
+        {pathname === "/dashboard" && (
+          <div className="mb-5 sm:hidden">
+            <p className="text-sm text-muted">Assalam o Alaikum, {first}</p>
+            <h1 className="text-2xl leading-tight font-bold tracking-tight text-ink">Your money at a glance</h1>
+          </div>
+        )}
+
+        {/* Tablets and laptops. */}
+        <header className="flex items-center gap-3 pt-1 pb-5 max-sm:hidden sm:pb-6 lg:pt-0">
+          {/* The logo lives in the sidebar on laptops; tablets show it next to the greeting. */}
           <Link href="/dashboard" aria-label="Saving home" className="lg:hidden">
-            <span className="sm:hidden"><Logo size={44} withName={false} /></span>
-            <span className="hidden sm:inline"><Logo size={52} withName={false} tone="forest" /></span>
+            <Logo size={52} withName={false} tone="forest" />
           </Link>
           <div className="min-w-0 flex-1">
             <p className="text-sm text-muted sm:text-base">Assalam o Alaikum,</p>
             {/* The signed-in user's own first name. */}
             <p className="truncate text-2xl leading-tight font-bold tracking-tight text-ink sm:text-[1.75rem] lg:text-4xl">{first}</p>
           </div>
-          {me?.test_tools && (
-            <button onClick={sendTestAlert} disabled={sending} aria-label="Send a test bank email" title="Send a test bank email"
-              className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-semibold text-ink-2 hover:bg-hover disabled:opacity-50">
-              <FlaskConical className={clsx("size-5", sending && "animate-pulse")} aria-hidden />
-              <span className="hidden xl:inline">Test bank email</span>
-            </button>
-          )}
+          {testAlert}
           <span className="hidden lg:inline-flex">{datePill}</span>
-          <button onClick={toggleSettings}
-            aria-label={settingsShown ? "Close settings" : "Account and settings"} aria-expanded={settingsShown}
-            title={user.full_name || user.email}
-            className="relative grid size-12 shrink-0 place-items-center rounded-full bg-forest text-[15px] font-bold tracking-wide text-forest-ink transition hover:brightness-110 lg:size-14 lg:text-lg">
-            <span aria-hidden className={clsx("transition-all duration-300", settingsShown && "scale-50 -rotate-90 opacity-0")}>
-              {initials(user.full_name || user.email)}
-            </span>
-            <X aria-hidden className={clsx("absolute size-5 transition-all duration-300",
-              settingsShown ? "scale-100 rotate-0 opacity-100" : "scale-50 rotate-90 opacity-0")} />
-          </button>
+          {avatar("size-12 text-[15px] lg:size-14 lg:text-lg")}
         </header>
-        <div className="-mt-1 mb-5 sm:hidden">{datePill}</div>
 
         <main>{children}</main>
       </div>
@@ -167,10 +188,10 @@ function Sheet({ title, onClose, onClosing, children }: {
     return () => window.removeEventListener("keydown", onKey);
   }, [close]);
   return (
-    // A panel that opens from the avatar in the top-right corner.
+    // A panel that opens from the avatar (top-left on phones, top-right on wider screens).
     <div className="fixed inset-0 z-50" role="dialog" aria-label={title}>
       <div className={clsx("absolute inset-0 touch-none bg-ink/30", closing && "fade-closing")} onClick={close} />
-      <div className={clsx("pop-tr absolute top-[4.75rem] right-3 left-3 sm:left-auto sm:w-96 lg:top-[5.5rem] lg:right-5", closing && "is-closing")}>
+      <div className={clsx("pop-tr pop-sheet absolute top-[4.75rem] right-3 left-3 sm:left-auto sm:w-96 lg:top-[5.5rem] lg:right-5", closing && "is-closing")}>
         <div className="max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain rounded-[var(--radius-card)] bg-surface p-5 shadow-2xl">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold">{title}</h2>
@@ -300,4 +321,36 @@ function initials(name: string): string {
   const parts = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
   const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? "?").slice(0, 2);
   return letters.toUpperCase();
+}
+
+/** Phones: opens and closes the chat popup (ChatWidget), shows the unread count and turns into a cross while open. */
+function PhoneChatButton() {
+  const [unread, setUnread] = useState(0);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const onUnread = (e: Event) => setUnread(Number((e as CustomEvent).detail) || 0);
+    const onState = (e: Event) => setOpen(Boolean((e as CustomEvent).detail));
+    window.addEventListener("bachat:chat-unread", onUnread);
+    window.addEventListener("bachat:chat-state", onState);
+    return () => {
+      window.removeEventListener("bachat:chat-unread", onUnread);
+      window.removeEventListener("bachat:chat-state", onState);
+    };
+  }, []);
+  return (
+    <button onClick={() => window.dispatchEvent(new Event("bachat:toggle-chat"))}
+      aria-label={open ? "Close chat" : unread ? `Open chat, ${unread} unread` : "Open chat with your assistant"}
+      aria-expanded={open}
+      className="relative grid size-11 place-items-center rounded-full bg-forest text-forest-ink transition hover:brightness-110 active:scale-95">
+      <MessageCircleMore aria-hidden className={clsx("absolute size-5 transition-all duration-300",
+        open ? "scale-50 rotate-90 opacity-0" : "scale-100 rotate-0 opacity-100")} />
+      <X aria-hidden className={clsx("absolute size-5 transition-all duration-300",
+        open ? "scale-100 rotate-0 opacity-100" : "scale-50 -rotate-90 opacity-0")} />
+      {unread > 0 && !open && (
+        <span className="absolute -top-1 -right-1 grid min-w-5 place-items-center rounded-full bg-alert px-1 text-[11px] font-bold text-white ring-2 ring-bg">
+          {unread}
+        </span>
+      )}
+    </button>
+  );
 }

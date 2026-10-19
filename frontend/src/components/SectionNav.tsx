@@ -15,13 +15,32 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: "deals", label: "Deals" },
 ];
 
+/** Each section's own page (phones open these from the bottom nav). */
+const PAGE: Record<Section, string> = { home: "/dashboard", goals: "/goals", spending: "/spending", banks: "/banks", deals: "/deals" };
+
+/** Phones: narrower than the `sm` breakpoint (640px). */
+export function usePhone(): boolean {
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setPhone(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return phone;
+}
+
 /**
- * Which dashboard section is on screen. The dashboard is one scrolling page: each section is an element with
- * id="goals" etc., and the last one whose top has passed a third of the viewport is the active one.
+ * Which section to highlight. On a section's own page (/goals etc.) that section; on the dashboard, phones
+ * highlight Home and wider screens the section on screen. The dashboard is one scrolling page: each section is
+ * an element with id="goals" etc., and the last one whose top has passed a third of the viewport is the active one.
  */
 function useActiveSection(): Section | null {
   const pathname = usePathname();
-  const onDashboard = pathname === "/dashboard";
+  const phone = usePhone();
+  // Phones show sections on their own pages, so on the dashboard they always highlight Home.
+  const onDashboard = pathname === "/dashboard" && !phone;
   const [active, setActive] = useState<Section>("home");
   useEffect(() => {
     if (!onDashboard) return;
@@ -49,7 +68,8 @@ function useActiveSection(): Section | null {
     };
   }, [onDashboard]);
   if (onDashboard) return active;
-  return pathname.startsWith("/goals") ? "goals" : null;
+  const page = SECTIONS.find(({ id }) => id !== "home" && pathname.startsWith(PAGE[id]));
+  return page ? page.id : pathname === "/dashboard" ? "home" : null;
 }
 
 /** On the dashboard, scroll smoothly to the section; anywhere else, go to the dashboard at that section. */
@@ -105,28 +125,38 @@ export function Sidebar() {
 
 /**
  * Phones and tablets: a dark pill fixed to the bottom of the screen (full width on phones, centred on tablets).
+ * On phones each item opens that section's own page; on tablets it scrolls the dashboard.
  * It reserves its height through --bottom-nav so page content and the chat button stay clear of it.
  */
 export function BottomNav() {
   const active = useActiveSection();
+  const phone = usePhone();
   useEffect(() => {
     document.documentElement.classList.add("has-bottom-nav");
     return () => document.documentElement.classList.remove("has-bottom-nav");
   }, []);
   return (
     <nav aria-label="Dashboard sections"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 lg:hidden">
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 lg:hidden">
       <ul className="flex h-16 items-center gap-1 rounded-full bg-side p-2 shadow-lg shadow-black/10">
         {SECTIONS.map(({ id, label }) => (
           <li key={id} className="flex-1 sm:flex-none">
-            <SectionLink id={id}
-              className={clsx("flex h-12 items-center justify-center rounded-full px-2 text-[13px] whitespace-nowrap transition sm:px-6 sm:text-base",
-                active === id ? "bg-primary font-semibold text-primary-ink" : "text-side-ink hover:text-forest-ink")}>
-              <span aria-current={active === id ? "page" : undefined}>{label}</span>
-            </SectionLink>
+            {phone ? (
+              <Link href={PAGE[id]} aria-current={active === id ? "page" : undefined} className={navItem(active === id)}>
+                {label}
+              </Link>
+            ) : (
+              <SectionLink id={id} className={navItem(active === id)}>
+                <span aria-current={active === id ? "page" : undefined}>{label}</span>
+              </SectionLink>
+            )}
           </li>
         ))}
       </ul>
     </nav>
   );
 }
+
+const navItem = (on: boolean) =>
+  clsx("flex h-12 items-center justify-center rounded-full px-2 text-[13px] whitespace-nowrap transition sm:px-6 sm:text-base",
+    on ? "bg-primary font-semibold text-primary-ink" : "text-side-ink hover:text-forest-ink");

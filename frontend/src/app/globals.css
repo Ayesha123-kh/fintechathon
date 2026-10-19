@@ -158,6 +158,12 @@ body {
   transform-origin: bottom right;
   animation: bubble-pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
+@media (max-width: 639px) {
+  /* Phones: it hangs from the chat icon in the top bar. */
+  .bubble-pop {
+    transform-origin: top right;
+  }
+}
 
 /* Space kept clear above the floating bottom nav (phones and tablets; laptops use the sidebar). */
 :root {
@@ -191,18 +197,34 @@ body {
   }
 }
 .pop-tr,
-.pop-br {
+.pop-br,
+.pop-chat {
   animation: pop-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.12);
 }
 .pop-tr {
   transform-origin: top right;
 }
-.pop-br {
+.pop-br,
+.pop-chat {
   --pop-y: 10px;
   transform-origin: bottom right;
 }
+/* Phones: the avatar, and so the settings panel's origin, is top-left. */
+@media (max-width: 639px) {
+  .pop-sheet {
+    transform-origin: top left;
+  }
+}
+/* The chat grows out of the floating button on wider screens and out of the top bar's chat icon on phones. */
+@media (max-width: 639px) {
+  .pop-chat {
+    --pop-y: -10px;
+    transform-origin: top right;
+  }
+}
 .pop-tr.is-closing,
-.pop-br.is-closing {
+.pop-br.is-closing,
+.pop-chat.is-closing {
   animation: pop-out 0.18s ease-in forwards;
 }
 .fade-closing {
@@ -212,7 +234,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .bubble-pop,
   .pop-tr,
-  .pop-br {
+  .pop-br,
+  .pop-chat {
     animation: none !important;
   }
 }
