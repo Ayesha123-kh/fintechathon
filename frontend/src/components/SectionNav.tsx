@@ -22,11 +22,11 @@ const PHONE_ORDER: Section[] = ["goals", "spending", "home", "banks", "deals"];
 const PAGE: Record<Section, string> = { home: "/dashboard", goals: "/goals", spending: "/spending", banks: "/banks", deals: "/deals" };
 
 /*
-  Phone page transitions (about 1 s in all). The selected item always sits raised above the bar. Tapping another
-  one lowers the old item and raises the new one, while the current page dims slightly (html.page-leaving); then
-  it navigates and the next page's AppShell, seeing navTransitionPending(), fades the new page in.
+  Phone page transitions (about 1 s in all). Tapping an item slides the peach highlight over to it while the
+  current page dims slightly (html.page-leaving); then it navigates and the next page's AppShell, seeing
+  navTransitionPending(), fades the new page in.
 */
-const LEAVE_MS = 350; // lift + dim before the next page opens
+const LEAVE_MS = 350; // highlight slide + dim before the next page opens
 let tappedAt = -Infinity;
 /**
  * True for the page that a bottom-nav tap opened (read by AppShell and the nav when they mount). It is a time
@@ -150,9 +150,11 @@ export function BottomNav() {
   const active = useActiveSection();
   const phone = usePhone();
   const router = useRouter();
-  // The tapped item rises (and the current one lowers) at once, before its page has opened.
+  // The highlight moves to the tapped item at once, before its page has opened.
   const [popped, setPopped] = useState<Section | null>(null);
-  const raised = popped ?? active;
+  const selected = popped ?? active;
+  const items = phone ? PHONE_ORDER.map((id) => SECTIONS.find((x) => x.id === id)!) : SECTIONS;
+  const selectedIndex = items.findIndex(({ id }) => id === selected);
   const go = (e: React.MouseEvent, id: Section) => {
     if (active === id || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; // plain navigation
@@ -169,25 +171,36 @@ export function BottomNav() {
     return () => document.documentElement.classList.remove("has-bottom-nav");
   }, []);
   return (
-    <nav aria-label="Dashboard sections"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 lg:hidden">
-      <ul className="flex h-16 items-center gap-1 rounded-full bg-side p-2 shadow-lg shadow-black/10">
-        {(phone ? PHONE_ORDER.map((id) => SECTIONS.find((x) => x.id === id)!) : SECTIONS).map(({ id, label }) => (
-          <li key={id} className="flex-1 sm:flex-none">
-            {phone ? (
-              <Link href={PAGE[id]} aria-current={active === id ? "page" : undefined} onClick={(e) => go(e, id)}
-                className={clsx(navItem(raised === id), "nav-lift", raised === id && "nav-raised")}>
-                {label}
-              </Link>
-            ) : (
-              <SectionLink id={id} className={navItem(active === id)}>
-                <span aria-current={active === id ? "page" : undefined}>{label}</span>
-              </SectionLink>
-            )}
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <>
+      {/* Phones: a frosted strip behind the floating bar, so content scrolling underneath is blurred rather than readable. */}
+      <div aria-hidden
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-[calc(var(--bottom-nav)+1.75rem)] bg-bg/70 backdrop-blur-lg [mask-image:linear-gradient(to_top,black_70%,transparent)] sm:hidden" />
+      <nav aria-label="Dashboard sections"
+        className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 lg:hidden">
+        <ul className="relative flex h-16 items-center gap-1 rounded-full bg-side p-2 shadow-lg shadow-black/10">
+          {/* Phones: one peach highlight that slides to the selected item (the five items share the width equally). */}
+          {phone && selectedIndex >= 0 && (
+            <li aria-hidden className="nav-slider absolute top-2 bottom-2 left-2 rounded-full bg-primary"
+              style={{ "--i": selectedIndex } as React.CSSProperties} />
+          )}
+          {items.map(({ id, label }) => (
+            <li key={id} className="min-w-0 flex-1 basis-0 sm:flex-none sm:basis-auto">
+              {phone ? (
+                <Link href={PAGE[id]} aria-current={active === id ? "page" : undefined} onClick={(e) => go(e, id)}
+                  className={clsx("relative flex h-12 items-center justify-center rounded-full px-1 text-[13px] whitespace-nowrap transition-colors duration-300",
+                  selected === id ? "font-semibold text-primary-ink" : "text-side-ink hover:text-forest-ink")}>
+                  {label}
+                </Link>
+              ) : (
+                <SectionLink id={id} className={navItem(active === id)}>
+                  <span aria-current={active === id ? "page" : undefined}>{label}</span>
+                </SectionLink>
+              )}
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </>
   );
 }
 
