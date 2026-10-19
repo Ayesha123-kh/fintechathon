@@ -13,17 +13,16 @@ import logging
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.clock import PKT
 from app.models import BankAccount, Card, Deal, DealOffer, DealRedemption, Merchant, Transaction
 from app.services.deals import card_matches
 
 log = logging.getLogger(__name__)
 
-PKT = ZoneInfo("Asia/Karachi")
 OFFER_TTL_DAYS = 14  # an offer without a tighter deal window counts for this long
 CENT = Decimal("0.01")
 

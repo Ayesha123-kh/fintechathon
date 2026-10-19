@@ -5,13 +5,14 @@ except a few toggles that also exist in chat.
 """
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import clock
 from app.core.config import settings
 from app.core.deps import Principal, own_db, user_principal
 from app.models import (
@@ -87,7 +88,7 @@ async def list_goals(s: AsyncSession = Depends(own_db)) -> list[dict]:
 
 def _goal_out(g: Goal) -> dict:
     remaining = max(finance.money(g.target_amount) - finance.money(g.saved_amount), 0)
-    months = finance._months_left(g.deadline, date.today())
+    months = finance._months_left(g.deadline, clock.today())
     return {
         "id": str(g.id), "name": g.name, "icon": g.icon, "status": g.status, "priority": g.priority,
         "weight": g.weight, "target": g.target_amount, "saved": g.saved_amount, "remaining": remaining,
@@ -112,7 +113,7 @@ async def goal_detail(goal_id: uuid.UUID, s: AsyncSession = Depends(own_db)) -> 
     remaining = out["remaining"]
     projected = None
     if monthly_rate and remaining:
-        projected = (date.today() + timedelta(days=int(float(remaining / monthly_rate) * 30.4))).isoformat()
+        projected = (clock.today() + timedelta(days=int(float(remaining / monthly_rate) * 30.4))).isoformat()
     out.update({
         "monthly_rate": monthly_rate, "projected_completion": projected,
         "on_track": (projected is None and remaining == 0) or (bool(projected) and (not g.deadline or projected <= g.deadline.isoformat())),

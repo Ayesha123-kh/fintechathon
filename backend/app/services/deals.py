@@ -7,6 +7,7 @@ from datetime import date
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import clock
 from app.models import Bank, Card, Deal, Merchant, Transaction, UserProfile
 from app.services.text import normalize_name
 
@@ -38,7 +39,7 @@ async def find_deals(
     only_eligible: bool = True,
     limit: int = 15,
 ) -> list[dict]:
-    today = date.today()
+    today = clock.today()
     cards = list((await s.execute(select(Card))).scalars())
     profile = await s.get(UserProfile, user_id)
     city = (profile.city or "").lower() if profile else ""

@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import clock
 from app.core.db import system_session
 from app.models import (
     Bank,
@@ -176,7 +177,7 @@ def _months_left(deadline: date | None, today: date) -> Decimal:
 
 def split_savings(total: Decimal, goals: list[Goal], mode: str, today: date | None = None) -> list[Allocation]:
     """Divide `total` between active goals. Never over-fills a goal; overflow goes to general savings."""
-    today = today or date.today()
+    today = today or clock.today()
     goals = [g for g in goals if g.status == "active" and money(g.target_amount) > money(g.saved_amount)]
     if total <= 0:
         return []
@@ -319,9 +320,8 @@ async def redeem_deal(
 # ---------------------------------------------------------------- dashboard
 
 async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
-    now = datetime.now(UTC)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    week_ago = now - timedelta(days=7)
+    month_start = clock.month_start()
+    week_ago = datetime.now(UTC) - timedelta(days=7)
 
     accounts = (await s.execute(
         select(BankAccount, Bank).join(Bank, Bank.id == BankAccount.bank_id).order_by(BankAccount.created_at)
@@ -347,7 +347,7 @@ async def dashboard(s: AsyncSession, user_id: uuid.UUID) -> dict:
 
     goals = (await s.execute(select(Goal).where(Goal.status.in_(["active", "completed", "paused"]))
                              .order_by(Goal.status, Goal.deadline.nulls_last()))).scalars().all()
-    today = date.today()
+    today = clock.today()
     goal_rows = []
     for g in goals:
         remaining = max(money(g.target_amount) - money(g.saved_amount), Decimal(0))

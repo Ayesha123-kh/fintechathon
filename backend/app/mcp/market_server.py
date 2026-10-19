@@ -13,6 +13,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 
+from app.core import clock
 from app.core.db import system_session
 from app.mcp.common import out
 from app.models import (
@@ -345,7 +346,7 @@ async def upsert_deal(
     Low confidence (<0.5) deals go to admin review instead of users."""
     vu = date.fromisoformat(valid_until) if valid_until else None
     vf = date.fromisoformat(valid_from) if valid_from else None
-    if vu and vu < date.today():
+    if vu and vu < clock.today():
         return {"ok": False, "error": "deal already expired"}
     async with system_session() as s:
         bank_id = None
@@ -409,7 +410,7 @@ async def set_deal_status(bot_name: str, deal_id: str,
 async def expire_past_deals() -> dict:
     """Mark every deal whose valid_until is in the past as expired."""
     async with system_session() as s:
-        res = await s.execute(update(Deal).where(Deal.valid_until < date.today(), Deal.status == "active")
+        res = await s.execute(update(Deal).where(Deal.valid_until < clock.today(), Deal.status == "active")
                               .values(status="expired"))
         return {"expired": res.rowcount}
 

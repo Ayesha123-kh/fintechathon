@@ -1,11 +1,12 @@
 """Scheduled work: waking shared agent teams, Gmail sync and proactive nudges to users."""
 
 import logging
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import func, select
 
+from app.core import clock
 from app.core.db import scoped_session, system_session
 from app.models import AgentRegistry, ChatRoom, Merchant, SavingsEntry, Transaction, User, UserProfile
 from app.services import finance
@@ -137,10 +138,10 @@ async def sadqah_reminders(frequency: str) -> None:
 
 async def month_end_leftover() -> None:
     """For people who save 'whatever is left', move the month's unspent income into goals."""
-    today = date.today()
+    today = clock.today()
     if (today + timedelta(days=1)).month == today.month:
         return  # not the last day of the month
-    month_start = datetime(today.year, today.month, 1, tzinfo=UTC)
+    month_start = clock.month_start(today)
     for user_id, _, profile in await _active_users():
         if profile.savings_mode != "leftover":
             continue
@@ -163,7 +164,7 @@ async def month_end_leftover() -> None:
 
 async def overspend_nudge() -> None:
     """Evening nudge when today's spending is well above the person's daily budget."""
-    since = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    since = clock.day_start()
     for user_id, _, profile in await _active_users():
         if not profile.monthly_income:
             continue

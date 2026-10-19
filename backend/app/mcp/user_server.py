@@ -17,6 +17,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import clock
 from app.core.cache import rate_limit
 from app.core.db import scoped_session
 from app.mcp.common import out
@@ -67,13 +68,14 @@ class ToolError(Exception):
 
 @asynccontextmanager
 async def member(member_key: str) -> AsyncIterator[tuple[AsyncSession, uuid.UUID]]:
-    if not await rate_limit(f"mk:{member_key[:12]}", 600, 60):
-        raise ToolError("Too many calls, slow down.")
     user_id = await user_id_for_member_key(member_key or "")
     if not user_id:
         if not await rate_limit("mk:invalid", 50, 60):
             await asyncio.sleep(2)
         raise ToolError("Unknown member_key. Copy it exactly from the room bulletin.")
+    # Per person: keys are random words, so a prefix of the key could be shared by several people.
+    if not await rate_limit(f"mk:{user_id}", 600, 60):
+        raise ToolError("Too many calls, slow down.")
     async with scoped_session(user_id, "user") as s:
         yield s, user_id
 
@@ -405,7 +407,7 @@ async def create_goal(member_key: str, name: str, target_amount: float, deadline
         await s.flush()
         monthly = None
         if g.deadline:
-            monthly = float(finance.money(target_amount) / finance._months_left(g.deadline, date.today()))
+            monthly = float(finance.money(target_amount) / finance._months_left(g.deadline, clock.today()))
         return {"ok": True, "goal_id": str(g.id), "monthly_needed": monthly}
 
 
@@ -608,7 +610,7 @@ async def send_push_notification(member_key: str, title: str, body: str, url: st
     important deal expiring). Max 6 per day."""
     async with member(member_key) as (_, uid):
         pass
-    if not await rate_limit(f"push:{uid}:{date.today()}", 6, 86400):
+    if not await rate_limit(f"push:{uid}:{clock.today()}", 6, 86400):
         return {"ok": False, "error": "daily notification limit reached"}
     await notify(uid, "chat", title[:120], body[:400], url=url)
     return {"ok": True}
