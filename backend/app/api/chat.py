@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import limits
 from app.core.cache import chat_channel, presence_key, rate_limit, redis
 from app.core.db import scoped_session
 from app.core.deps import Principal, own_db, passive_user_principal, user_principal
@@ -16,6 +17,7 @@ from app.core.llm import transcribe
 from app.models import ChatMessage, ChatRoom, Notification, UserProfile
 from app.services.gmail import must_connect_first
 from app.services.omb import GatewayError, ensure_room, send_to_room
+from app.services.voice import BadAudio, wav_info
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -61,7 +63,7 @@ async def history(before: datetime | None = None, limit: int = 40, s: AsyncSessi
 
 
 class SendIn(BaseModel):
-    text: str = Field(min_length=1, max_length=4000)
+    text: str = Field(min_length=1, max_length=limits.CHAT_TEXT_MAX)
 
 
 async def _send(user_id: uuid.UUID, text: str) -> dict:
@@ -91,11 +93,17 @@ async def send(body: SendIn, p: Principal = Depends(user_principal)) -> dict:
 @router.post("/transcribe")
 async def transcribe_voice(audio: UploadFile = File(...), p: Principal = Depends(user_principal)) -> dict:
     """Speech to text only: the app puts the text in the message box for the person to edit and send."""
-    data = await audio.read()
-    if len(data) > 15 * 1024 * 1024:
-        raise HTTPException(413, "audio_too_large")
-    if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
-        raise HTTPException(415, "audio_must_be_wav")
+    data = await audio.read(limits.VOICE_MAX_BYTES + 1)
+    if len(data) > limits.VOICE_MAX_BYTES:
+        raise HTTPException(413, "audio_too_long")
+    try:
+        seconds = wav_info(data).seconds
+    except BadAudio as exc:
+        raise HTTPException(415, "audio_must_be_wav") from exc
+    if seconds > limits.VOICE_MAX_SECONDS + 0.5:  # the app stops recording at 30 s
+        raise HTTPException(413, "audio_too_long")
+    if seconds < limits.VOICE_MIN_SECONDS:
+        raise HTTPException(422, "audio_too_short")
     async with scoped_session(p.user_id, "user") as s:
         profile = await s.get(UserProfile, p.user_id)
     try:

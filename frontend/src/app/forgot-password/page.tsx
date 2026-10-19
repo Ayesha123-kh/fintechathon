@@ -39,7 +39,7 @@ function Request() {
   return (
     <AuthShell title="Forgot password?" subtitle="Enter your email and we'll send you a reset link.">
       <form onSubmit={submit} className="space-y-4">
-        <Input label="Email" type="email" name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input label="Email" type="email" name="email" autoComplete="email" maxLength={320} value={email} onChange={(e) => setEmail(e.target.value)} required />
         <ErrorText>{error}</ErrorText>
         <Button type="submit" size="lg" className="w-full" loading={busy}>Send reset link</Button>
       </form>
@@ -73,9 +73,9 @@ function Reset({ token }: { token: string }) {
   return (
     <AuthShell title="Choose a new password" subtitle="You'll be signed out on every device for safety.">
       <form onSubmit={submit} className="space-y-4">
-        <Input label="New password" type="password" autoComplete="new-password" minLength={8} value={password}
+        <Input label="New password" type="password" autoComplete="new-password" minLength={8} maxLength={128} value={password}
           onChange={(e) => setPassword(e.target.value)} required />
-        <Input label="Confirm password" type="password" autoComplete="new-password" minLength={8} value={confirm}
+        <Input label="Confirm password" type="password" autoComplete="new-password" minLength={8} maxLength={128} value={confirm}
           onChange={(e) => setConfirm(e.target.value)} required />
         <ErrorText>{error}</ErrorText>
         <Button type="submit" size="lg" className="w-full" loading={busy}>Save password</Button>

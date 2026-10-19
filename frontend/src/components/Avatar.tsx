@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import useSWR from "swr";
 import { ApiError, api, errorText, fetcher } from "@/lib/api";
 import { squarePhoto } from "@/lib/avatar";
+import { AVATAR_MAX_BYTES, AVATAR_MAX_INPUT_BYTES } from "@/lib/limits";
 import { useSession } from "@/lib/session";
 
 /** The signed-in person's optional profile photo URL, or null (none set, or an admin account). */
@@ -35,11 +36,24 @@ export function ProfileCard() {
 
   const upload = async (file?: File) => {
     if (!file) return;
-    setBusy(true);
     setError("");
+    // The same rules the server applies, checked first so nothing is uploaded only to be refused.
+    if (!/^image\/(jpeg|png|webp|heic|heif|gif|avif|bmp)$/.test(file.type)) {
+      setError("Choose a photo (JPEG, PNG or WebP).");
+      if (input.current) input.current.value = "";
+      return;
+    }
+    if (file.size > AVATAR_MAX_INPUT_BYTES) {
+      setError(`That photo is over ${AVATAR_MAX_INPUT_BYTES / 1024 / 1024} MB. Choose a smaller one.`);
+      if (input.current) input.current.value = "";
+      return;
+    }
+    setBusy(true);
     try {
+      const photo = await squarePhoto(file);
+      if (photo.size > AVATAR_MAX_BYTES) throw new ApiError(413, "avatar_too_large");
       const form = new FormData();
-      form.append("image", await squarePhoto(file), "avatar");
+      form.append("image", photo, "avatar");
       await api("/me/avatar", { method: "POST", body: form });
       await refresh();
     } catch (e) {
@@ -80,7 +94,8 @@ export function ProfileCard() {
               </span>
             )}
           </button>
-          <input ref={input} type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0])} />
+          <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden"
+            onChange={(e) => upload(e.target.files?.[0])} />
         </>
       )}
       <div className="min-w-0 flex-1">

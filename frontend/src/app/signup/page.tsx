@@ -38,9 +38,9 @@ export default function SignUp() {
   return (
     <AuthShell title="Start saving smarter" subtitle="Create an account. Your assistant will set everything up with you in a quick chat.">
       <form onSubmit={submit} className="space-y-4">
-        <Input label="Full name" name="full_name" autoComplete="name" value={form.full_name} onChange={set("full_name")} required />
-        <Input label="Email" type="email" name="email" autoComplete="email" value={form.email} onChange={set("email")} required />
-        <Input label="Password" type="password" name="password" autoComplete="new-password" minLength={8}
+        <Input label="Full name" name="full_name" autoComplete="name" maxLength={200} value={form.full_name} onChange={set("full_name")} required />
+        <Input label="Email" type="email" name="email" autoComplete="email" maxLength={320} value={form.email} onChange={set("email")} required />
+        <Input label="Password" type="password" name="password" autoComplete="new-password" minLength={8} maxLength={128}
           value={form.password} onChange={set("password")} required />
         <ErrorText>{error}</ErrorText>
         <Button type="submit" size="lg" className="w-full" loading={busy}>Continue</Button>

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import clock
+from app.core import clock, limits
 from app.core.config import settings
 from app.core.deps import Principal, own_db, user_principal
 from app.models import (
@@ -60,8 +60,8 @@ def _avatar_version(profile: UserProfile | None) -> int | None:
 async def upload_avatar(image: UploadFile = File(...), p: Principal = Depends(user_principal),
                         s: AsyncSession = Depends(own_db)) -> dict:
     """Set the optional profile photo. The app crops and shrinks it in the browser before uploading."""
-    data = await image.read(avatar.MAX_BYTES + 1)
-    if len(data) > avatar.MAX_BYTES:
+    data = await image.read(limits.AVATAR_MAX_BYTES + 1)
+    if len(data) > limits.AVATAR_MAX_BYTES:
         raise HTTPException(413, "avatar_too_large")
     kind = avatar.image_type(data)
     if not kind:

@@ -1,7 +1,6 @@
 """Profile photos. Only small JPEG, PNG or WebP images are kept, recognised from their bytes rather than from the
-file name or the type the browser claims, so nothing a browser could run as a page (SVG, HTML) is stored or served."""
-
-MAX_BYTES = 512 * 1024  # the app uploads a 256 px square, a few tens of KB
+file name or the type the browser claims, so nothing a browser could run as a page (SVG, HTML) is stored or served.
+The size limit is limits.AVATAR_MAX_BYTES."""
 
 
 def image_type(data: bytes) -> str | None:

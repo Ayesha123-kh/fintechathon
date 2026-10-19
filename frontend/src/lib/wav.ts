@@ -1,5 +1,7 @@
 /** Voice messages recorded straight to 16 kHz mono 16-bit WAV. MediaRecorder only makes WebM or MP4,
  *  which llama.cpp's speech-to-text server cannot decode (it reads WAV, MP3 and FLAC by itself). */
+import { VOICE_MAX_SECONDS } from "./limits";
+
 const RATE = 16000;
 
 export type WavRecorder = { stop: () => Promise<Blob>; cancel: () => void };
@@ -46,7 +48,8 @@ export async function recordWav(): Promise<WavRecorder> {
         node.port.postMessage("flush");
       });
       release();
-      const pcm = join(chunks);
+      // Never more than the server accepts, even if stopping came a moment late.
+      const pcm = join(chunks).subarray(0, Math.ceil(rate * VOICE_MAX_SECONDS));
       return rate > RATE ? encodeWav(downsample(pcm, rate), RATE) : encodeWav(pcm, rate);
     },
     cancel: release,

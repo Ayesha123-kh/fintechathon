@@ -88,6 +88,10 @@ const ERRORS: Record<string, string> = {
   slow_down: "You're sending messages too quickly.",
   avatar_too_large: "That photo is too large. Try a smaller one.",
   avatar_must_be_an_image: "Use a JPEG, PNG or WebP photo.",
+  audio_too_long: "Voice notes can be up to 30 seconds.",
+  audio_too_short: "That was too short. Hold the mic a little longer.",
+  audio_must_be_wav: "That recording couldn't be read. Please try again.",
+  could_not_understand_audio: "Couldn't make out any words. Please try again.",
 };
 
 export function errorText(err: unknown): string {

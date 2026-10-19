@@ -56,9 +56,9 @@ export default function SignIn() {
   return (
     <AuthShell title="Welcome back" subtitle="Sign in to see your savings and goals.">
       <form onSubmit={submit} className="space-y-4">
-        <Input label="Email" type="email" name="email" autoComplete="username webauthn" value={email}
+        <Input label="Email" type="email" name="email" autoComplete="username webauthn" maxLength={320} value={email}
           onChange={(e) => setEmail(e.target.value)} required />
-        <Input label="Password" type="password" name="password" autoComplete="current-password" value={password}
+        <Input label="Password" type="password" name="password" autoComplete="current-password" maxLength={128} value={password}
           onChange={(e) => setPassword(e.target.value)} required />
         <div className="flex justify-end">
           <Link href="/forgot-password" className="text-sm font-medium text-forest underline-offset-4 hover:underline dark:text-primary">
