@@ -138,12 +138,12 @@ function DashboardView({ d }: { d: Dashboard }) {
 
       {/*
         One grid for the rest, in reading order. Phones: one column. Tablets: goals full width, then pairs.
-        Wide laptops (12 columns, from 1380px): goals + spending, then banks, deals and activity side by side.
+        Wide laptops (12 columns, `wide:` = 1380px+): goals + spending, then banks, deals and activity side by side.
       */}
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 min-[1380px]:grid-cols-12">
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 wide:grid-cols-12">
         <Goals goals={d.goals} />
 
-        <Card id="spending" data-section className="min-[1380px]:col-span-5">
+        <Card id="spending" data-section className="wide:col-span-5">
           <h2 className={title}>Spending this month</h2>
           <p className="tabular mt-1 text-[15px] text-muted sm:text-base">
             {Number(d.income_this_month) > 0 ? `${rs(d.spent_this_month)} of ${rs(d.income_this_month)}` : `${rs(d.spent_this_month)} spent so far`}
@@ -155,7 +155,7 @@ function DashboardView({ d }: { d: Dashboard }) {
           </div>
         </Card>
 
-        <Card id="banks" data-section className="min-[1380px]:col-span-4">
+        <Card id="banks" data-section className="wide:col-span-4">
           <h2 className={clsx(title, "mb-5")}>Your banks</h2>
           {d.banks.length === 0 ? (
             <Empty icon={<PiggyBank className="size-6" />} title="No banks added" body="Tell your assistant which banks and wallets you use." />
@@ -180,7 +180,7 @@ function DashboardView({ d }: { d: Dashboard }) {
           )}
         </Card>
 
-        <Card id="deals" data-section className="bg-deal-bg! min-[1380px]:col-span-4">
+        <Card id="deals" data-section className="bg-deal-bg! wide:col-span-4">
           <h2 className={clsx(title, "mb-5")}>Deals for your cards</h2>
           {d.deals_for_you.length === 0 ? (
             <p className="text-sm text-muted">We&apos;re collecting discounts for your cards. Check back soon.</p>
@@ -206,7 +206,7 @@ function DashboardView({ d }: { d: Dashboard }) {
           )}
         </Card>
 
-        <Card className="min-[1380px]:col-span-4">
+        <Card className="wide:col-span-4">
           <h2 className={clsx(title, "mb-4")}>Recent activity</h2>
           {d.recent_transactions.length === 0 ? (
             <p className="text-sm text-muted">Transactions from your bank emails or chat appear here.</p>
@@ -238,7 +238,7 @@ function Goals({ goals }: { goals: Dashboard["goals"] }) {
   const when = (g: Dashboard["goals"][number]) =>
     g.status === "completed" ? "Completed" : g.deadline ? monthYear(g.deadline) : "Anytime";
   return (
-    <Card id="goals" data-section className="md:col-span-2 min-[1380px]:col-span-7">
+    <Card id="goals" data-section className="md:col-span-2 wide:col-span-7">
       <div className="mb-5 flex items-center justify-between">
         <h2 className={title}>Goals</h2>
         {goals.length > 3 && (

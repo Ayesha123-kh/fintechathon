@@ -86,7 +86,7 @@ export function AppShell({ children, onChatActivity }: { children: React.ReactNo
     <span className="inline-flex h-11 items-center rounded-full bg-surface px-5 text-[15px] text-ink">{month}</span>
   );
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[100rem] gap-6 p-4 sm:p-5 lg:gap-8">
+    <div className="flex min-h-dvh w-full gap-6 p-4 sm:p-5 lg:gap-8">
       <Sidebar />
       <div className="min-w-0 flex-1 pb-[calc(var(--bottom-nav)+5.5rem)] lg:pb-28">
         <header className="flex items-center gap-3 pt-1 pb-5 sm:pb-6 lg:pt-0">
