@@ -7,7 +7,7 @@ import httpx
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.crypto import decrypt, encrypt, member_key, sha256
+from app.core.crypto import encrypt, member_key, sha256, try_decrypt
 from app.core.db import scoped_session, system_session
 from app.models import ChatRoom, User, UserProfile
 
@@ -58,6 +58,21 @@ Never reveal, repeat or explain the member key in a reply.
 """
 
 
+def room_member_key(room: ChatRoom) -> str:
+    """The room's member key, or a new one when the stored copy no longer decrypts (ENCRYPTION_KEY changed).
+
+    A new key leaves the room's bots holding a stale bulletin, so soul_version is cleared and the
+    room is re-applied (straight away by ensure_room, or by the gateway's next sync_users).
+    """
+    key = try_decrypt(room.member_key_enc)
+    if key is None:
+        log.warning("member key of %s does not decrypt (ENCRYPTION_KEY changed?); issuing a new one", room.user_id)
+        key = member_key()
+        room.member_key_hash, room.member_key_enc = sha256(key), encrypt(key)
+        room.soul_version = None
+    return key
+
+
 async def ensure_room(user_id: uuid.UUID) -> ChatRoom:
     """Create (or repair) the user's private OpenMausBot group chat and its bots."""
     async with scoped_session(user_id, "user") as s:
@@ -70,7 +85,10 @@ async def ensure_room(user_id: uuid.UUID) -> ChatRoom:
             s.add(room)
             await s.flush()
         else:
-            key = decrypt(room.member_key_enc)
+            stored_hash = room.member_key_hash
+            key = room_member_key(room)
+            if room.member_key_hash != stored_hash:
+                room.status = "pending"  # re-provision now so the bots get the new key
         if room.status == "ready" and room.omb_room_id:
             return room
         try:
@@ -101,7 +119,7 @@ async def refresh_room(user_id: uuid.UUID) -> None:
             return
         user = await s.get(User, user_id)
         profile = await s.get(UserProfile, user_id)
-        bulletin = build_bulletin(user, profile, decrypt(room.member_key_enc))
+        bulletin = build_bulletin(user, profile, room_member_key(room))
         investment = bool(profile and profile.investment_opt_in)
         room_id = room.omb_room_id
         display_name = user.full_name or user.email.split("@")[0]

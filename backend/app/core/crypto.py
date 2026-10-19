@@ -2,7 +2,7 @@ import base64
 import hashlib
 import secrets
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 
 from app.core.config import settings
 
@@ -21,6 +21,14 @@ def encrypt(value: str) -> str:
 
 def decrypt(value: str) -> str:
     return _fernet().decrypt(value.encode()).decode()
+
+
+def try_decrypt(value: str) -> str | None:
+    """None when the value was encrypted under another key (ENCRYPTION_KEY or JWT_SECRET changed)."""
+    try:
+        return decrypt(value)
+    except InvalidToken:
+        return None
 
 
 def sha256(value: str) -> str:

@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.crypto import decrypt, encrypt
+from app.core.crypto import encrypt, try_decrypt
 from app.core.db import scoped_session, system_session
 from app.core.llm import complete_json
 from app.models import Bank, BankAccount, Card, EmailConnection, IngestedEmail, User
@@ -98,13 +98,17 @@ async def exchange_code(user_id: uuid.UUID, code: str) -> EmailConnection:
 
 async def _access_token(conn: EmailConnection) -> str:
     if conn.token_expires_at and conn.token_expires_at > datetime.now(UTC):
-        return decrypt(conn.access_token_enc)
+        if (token := try_decrypt(conn.access_token_enc)) is not None:
+            return token
     if not conn.refresh_token_enc:
         raise RuntimeError("no refresh token; reconnect Gmail")
+    refresh_token = try_decrypt(conn.refresh_token_enc)
+    if refresh_token is None:
+        raise PermissionError("stored Gmail tokens no longer decrypt (ENCRYPTION_KEY changed); reconnect Gmail")
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.post(TOKEN_URL, data={
             "client_id": settings.google_client_id, "client_secret": settings.google_client_secret,
-            "refresh_token": decrypt(conn.refresh_token_enc), "grant_type": "refresh_token",
+            "refresh_token": refresh_token, "grant_type": "refresh_token",
         })
     if r.status_code in (400, 401):
         raise PermissionError("Gmail access was revoked; reconnect Gmail")
@@ -116,7 +120,9 @@ async def _access_token(conn: EmailConnection) -> str:
 
 
 async def revoke(conn: EmailConnection) -> None:
-    token = decrypt(conn.refresh_token_enc) if conn.refresh_token_enc else decrypt(conn.access_token_enc)
+    token = try_decrypt(conn.refresh_token_enc or conn.access_token_enc)
+    if token is None:  # encrypted under an old key; nothing we can revoke
+        return
     try:
         async with httpx.AsyncClient(timeout=10) as c:
             await c.post("https://oauth2.googleapis.com/revoke", params={"token": token})

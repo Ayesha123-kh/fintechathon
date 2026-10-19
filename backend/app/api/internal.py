@@ -10,12 +10,11 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.cache import chat_channel, redis
-from app.core.crypto import decrypt
 from app.core.db import scoped_session, system_session
 from app.core.deps import require_internal
 from app.models import AgentRegistry, ChatMessage, ChatRoom, User, UserProfile, WatchCluster
 from app.services.notify import notify
-from app.services.omb import build_bulletin
+from app.services.omb import build_bulletin, room_member_key
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/internal", tags=["internal"], dependencies=[Depends(require_internal)])
@@ -111,12 +110,16 @@ async def agent_users() -> list[dict]:
             .outerjoin(UserProfile, UserProfile.user_id == ChatRoom.user_id)
             .where(ChatRoom.status == "ready", User.is_active.is_(True), User.role == "user")
         )).all()
-        return [{
-            "user_id": str(room.user_id), "room_id": room.omb_room_id, "soul_version": room.soul_version,
-            "display_name": user.full_name or user.email.split("@")[0],
-            "investment": bool(profile and profile.investment_opt_in),
-            "bulletin": build_bulletin(user, profile, decrypt(room.member_key_enc)),
-        } for room, user, profile in rows]
+        out = []
+        for room, user, profile in rows:
+            key = room_member_key(room)  # first: a new key clears soul_version so the gateway re-applies the room
+            out.append({
+                "user_id": str(room.user_id), "room_id": room.omb_room_id, "soul_version": room.soul_version,
+                "display_name": user.full_name or user.email.split("@")[0],
+                "investment": bool(profile and profile.investment_opt_in),
+                "bulletin": build_bulletin(user, profile, key),
+            })
+        return out
 
 
 @router.get("/agents/known-users")
