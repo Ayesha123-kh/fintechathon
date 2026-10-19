@@ -399,7 +399,7 @@ function Bubble({ m }: { m: Msg }) {
     return (
       <div className="flex flex-col items-start">
         <span className="mb-1 inline-flex items-center gap-1 px-2 text-[11px] font-semibold text-muted">
-          <Bell className="size-3" aria-hidden /> Bachat
+          <Bell className="size-3" aria-hidden /> Saving
         </span>
         <div className="chat-text max-w-[85%] rounded-3xl rounded-bl-lg border-2 border-primary bg-surface px-4 py-2.5 text-[15px] leading-relaxed text-ink">
           <RichText text={m.text} />

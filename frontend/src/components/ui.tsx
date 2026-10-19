@@ -90,7 +90,7 @@ export function Logo({ size = 40, withName = true }: { size?: number; withName?:
   return (
     <span className="inline-flex items-center gap-2.5">
       <Image src="/icons/icon-192.png" alt="" width={size} height={size} className="rounded-xl" priority />
-      {withName && <span className="text-xl font-bold tracking-tight text-forest dark:text-primary">Bachat</span>}
+      {withName && <span className="text-xl font-bold tracking-tight text-forest dark:text-primary">Saving</span>}
     </span>
   );
 }

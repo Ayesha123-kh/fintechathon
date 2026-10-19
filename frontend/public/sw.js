@@ -1,5 +1,5 @@
-/* Bachat service worker: push notifications (also while the app is closed) and an offline shell. */
-const CACHE = "bachat-shell-v1";
+/* Saving service worker: push notifications (also while the app is closed) and an offline shell. */
+const CACHE = "bachat-shell-v2";
 const SHELL = ["/offline.html", "/icons/icon-192.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -25,7 +25,7 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("push", (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data && event.data.text() }; }
-  const title = data.title || "Bachat";
+  const title = data.title || "Saving";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       // Chat replies are already visible when the app is focused.
