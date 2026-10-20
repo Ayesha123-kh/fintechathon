@@ -1,19 +1,12 @@
 import clsx from "clsx";
-import { Mic, Sprout } from "lucide-react";
+import { Mic } from "lucide-react";
+import { GroupAvatar, MEMBERS, MemberAvatar, type MemberKey } from "@/components/ChatMembers";
 import { ProgressRing } from "@/components/charts";
 
 /*
   Pieces of the app drawn for the landing page, with made-up figures. Each is one image to screen readers
   (role="img" + a description); the parts inside are hidden from them.
 */
-
-function AssistantMark({ size = "sm" }: { size?: "sm" | "lg" }) {
-  return (
-    <span className={clsx("grid shrink-0 place-items-center rounded-full bg-primary text-forest", size === "lg" ? "size-11" : "size-8")}>
-      <Sprout className={size === "lg" ? "size-5" : "size-4"} strokeWidth={2.25} />
-    </span>
-  );
-}
 
 function Mine({ children }: { children: React.ReactNode }) {
   return (
@@ -23,12 +16,13 @@ function Mine({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Theirs({ sender, children }: { sender?: string; children: React.ReactNode }) {
+/** An advisor's message, with their avatar and name colour as in the real chat. */
+function Theirs({ who, children }: { who: MemberKey; children: React.ReactNode }) {
   return (
     <div className="flex items-end gap-2 pr-8">
-      <AssistantMark />
+      <MemberAvatar who={who} />
       <div className="min-w-0">
-        {sender && <p className="mb-1 px-1 text-xs font-semibold text-forest dark:text-primary">{sender}</p>}
+        <p className={clsx("mb-1 px-1 text-xs font-semibold", MEMBERS[who].nameColor)}>{MEMBERS[who].name}</p>
         <div className="rounded-2xl rounded-bl-md bg-surface px-4 py-2.5 text-[15px] leading-relaxed text-ink shadow-sm">{children}</div>
       </div>
     </div>
@@ -44,7 +38,7 @@ export function HeroMock() {
         {/* In the flow above the card, overlapping only its top padding, so the balance and ring stay readable. */}
         <div className="land-rise relative z-10 -mb-5 ml-auto w-[88%] sm:w-[72%]" style={{ animationDelay: "250ms" }}>
           <div className="rounded-3xl bg-surface p-3 shadow-[0_18px_40px_rgb(33_25_19/0.14)]">
-            <Theirs sender="Deals Advisor">
+            <Theirs who="deals">
               Shabash! 🎉 <b>Rs. 520</b> saved at KFC with your Meezan Visa. It&apos;s in your Umrah goal now.
             </Theirs>
           </div>
@@ -105,17 +99,17 @@ export function ChatMock() {
       <div aria-hidden>
         <div className="flex items-center gap-3 border-b border-line px-5 py-4">
           <span className="relative">
-            <AssistantMark size="lg" />
+            <GroupAvatar members={["assistant", "savings", "deals"]} />
             <span className="absolute -right-0.5 -bottom-0.5 size-3.5 rounded-full bg-[#3fb37f] ring-2 ring-surface" />
           </span>
-          <div>
-            <p className="text-lg leading-tight font-bold text-ink">Saving assistant</p>
-            <p className="text-sm text-muted">Online · Savings Coach · Deals Advisor</p>
+          <div className="min-w-0">
+            <p className="text-lg leading-tight font-bold text-ink">Your money team</p>
+            <p className="truncate text-sm text-muted">Finance Assistant, Savings Coach, Deals Advisor, You</p>
           </div>
         </div>
         <div className="space-y-3 bg-bg px-4 py-5">
           <Mine>Salary aa gayi, 150k. Car ke liye kitna bachaun?</Mine>
-          <Theirs sender="Finance Assistant">
+          <Theirs who="assistant">
             <p>Mubarak ho! 🎉 I&apos;ve set aside <b>Rs. 37,500</b> (25%) and split it by deadline:</p>
             <ul className="mt-1.5 list-disc pl-5">
               <li>Car (Honda City): Rs. 18,500</li>
