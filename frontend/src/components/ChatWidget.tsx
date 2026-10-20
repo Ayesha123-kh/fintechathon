@@ -311,7 +311,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
             className="relative block w-full rounded-2xl bg-surface px-5 py-4 text-left shadow-[0_12px_32px_rgb(16_26_20/0.12)] transition hover:brightness-[0.98]">
             <span className="mb-0.5 flex items-center gap-1 pr-6 text-sm font-bold text-forest dark:text-primary">
               {preview.kind === "notification" && <Bell className="size-3.5" aria-hidden />}
-              {preview.kind === "notification" ? "Saving" : "Saving assistant"}
+              {preview.kind === "notification" ? "Paisav" : "Paisav assistant"}
             </span>
             <span className="line-clamp-3 text-[15px] leading-snug text-ink-2">{plain(preview.text)}</span>
           </button>
@@ -360,7 +360,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                   status === "ready" ? "bg-[#3fb37f]" : status === "error" ? "bg-alert" : "bg-badge")} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-lg leading-tight font-bold text-ink">Saving assistant</p>
+                <p className="text-lg leading-tight font-bold text-ink">Paisav assistant</p>
                 <p className="truncate text-sm text-muted">
                   {waiting ? (activity?.state === "tool" ? "working…" : "typing…") : status === "ready" ? "Online · Savings Coach · Deals Advisor" : status === "error" ? "Reconnecting…" : "Setting up your assistant…"}
                 </p>
@@ -595,7 +595,7 @@ function Bubble({ m, first, last }: { m: Msg; first: boolean; last: boolean }) {
       {first && (m.kind === "notification" || m.sender) && (
         <p className="mb-1 flex items-center gap-1 px-1 text-xs font-semibold text-forest dark:text-primary">
           {m.kind === "notification" && <Bell className="size-3" aria-hidden />}
-          {m.kind === "notification" ? "Saving" : m.role === "system" ? "Saving assistant" : m.sender}
+          {m.kind === "notification" ? "Paisav" : m.role === "system" ? "Paisav assistant" : m.sender}
         </p>
       )}
       <div role={m.role === "system" ? "status" : undefined}

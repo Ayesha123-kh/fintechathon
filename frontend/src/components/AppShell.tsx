@@ -127,7 +127,7 @@ export function AppShell({ children, onChatActivity, sidebar }: {
         {/* Phones: a top bar that stays put, with the avatar left, the logo centred and the chat icon right. */}
         <header className="sticky top-0 z-40 -mx-4 -mt-4 mb-4 grid grid-cols-[1fr_auto_1fr] items-center bg-bg/95 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur sm:hidden">
           <div>{avatar("size-11 text-sm")}</div>
-          <Link href={isAdmin ? "/admin" : "/dashboard"} aria-label="Saving home"><Logo size={34} nameClassName="text-xl text-ink" /></Link>
+          <Link href={isAdmin ? "/admin" : "/dashboard"} aria-label="Paisav home"><Logo size={34} nameClassName="text-xl text-ink" /></Link>
           <div className="flex items-center justify-end gap-0.5">
             {testAlert}
             {!isAdmin && <PhoneChatButton />}
@@ -143,7 +143,7 @@ export function AppShell({ children, onChatActivity, sidebar }: {
         {/* Tablets and laptops. */}
         <header className="flex items-center gap-3 pt-1 pb-5 max-sm:hidden sm:pb-6 lg:pt-0">
           {/* The logo lives in the sidebar on laptops; tablets show it next to the greeting. */}
-          <Link href={isAdmin ? "/admin" : "/dashboard"} aria-label="Saving home" className="lg:hidden">
+          <Link href={isAdmin ? "/admin" : "/dashboard"} aria-label="Paisav home" className="lg:hidden">
             <Logo size={52} withName={false} tone="forest" />
           </Link>
           <div className="min-w-0 flex-1">
