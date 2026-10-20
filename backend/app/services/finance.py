@@ -74,6 +74,19 @@ async def resolve_merchant(name: str, description: str = "") -> tuple[uuid.UUID 
 
 # ---------------------------------------------------------------- transactions
 
+async def recent_chat_duplicate(s: AsyncSession, *, amount, direction: str, merchant: str,
+                                category: str | None, within_seconds: int = 90) -> Transaction | None:
+    """An identical spend told in chat a moment ago: the assistant (or a retry) repeating itself, not a new purchase."""
+    direction = "credit" if direction == "credit" else "debit"
+    since = datetime.now(UTC) - timedelta(seconds=within_seconds)
+    stmt = (select(Transaction)
+            .where(Transaction.source == "chat", Transaction.direction == direction,
+                   Transaction.amount == money(abs(Decimal(str(amount)))),
+                   Transaction.merchant_raw == merchant[:200], Transaction.created_at >= since)
+            .order_by(Transaction.created_at.desc()).limit(1))
+    return await s.scalar(stmt)
+
+
 async def record_transaction(
     s: AsyncSession,
     user_id: uuid.UUID,
@@ -105,7 +118,11 @@ async def record_transaction(
     if not category:
         category = merchant_cat or (await categorize(merchant, description))[0]
     if category and not await s.get(Category, category):
-        category = "misc"
+        # The assistant passed a word that is not one of our categories ("petrol", "Food", "groceries"): work the
+        # category out from the words instead of dropping the spend into miscellaneous.
+        category = (await categorize(merchant or category, f"{category} {description}"))[0]
+        if not await s.get(Category, category):
+            category = "misc"
     if direction == "debit" and category == "income":  # money going out is never income
         category = "misc"
     profile = await s.get(UserProfile, user_id)

@@ -26,6 +26,7 @@ from app.models import (
     BankAccount,
     Card,
     CardProduct,
+    Category,
     CoverageRequest,
     Deal,
     DealRedemption,
@@ -473,8 +474,19 @@ async def record_transaction(member_key: str, amount: float, direction: Literal[
                              merchant: str = "", category: str | None = None, account_id: str | None = None,
                              occurred_at: str | None = None, note: str = "", is_income: bool | None = None) -> dict:
     """Log a transaction the person tells you about (cash spends, transfers, salary). Debits reduce and credits
-    increase the account balance. Salary credits automatically move savings into goals."""
+    increase the account balance. Salary credits automatically move savings into goals.
+    Call it ONCE per spend and never repeat a call: an identical entry within 90 seconds is refused as a duplicate.
+    `category` is optional; when you give one it must be one of: food, grocery, fuel (petrol, diesel, CNG),
+    medicine, transport, utilities, shopping, entertainment, education, travel, housing, telecom, charity,
+    transfer, income, misc. Put what was bought in `merchant` or `note` ("petrol", "KFC") and the app picks
+    the category itself. Tell the person the category name returned in `category_name`."""
     async with member(member_key) as (s, uid):
+        if (dup := await finance.recent_chat_duplicate(s, amount=amount, direction=direction, merchant=merchant,
+                                                         category=category)):
+            cat = await s.get(Category, dup.category_slug)
+            return {"ok": True, "duplicate": True, "transaction_id": str(dup.id), "category": dup.category_slug,
+                    "category_name": cat.name if cat else dup.category_slug,
+                    "note": "The same entry was recorded a moment ago, so it was not added again."}
         when = datetime.fromisoformat(occurred_at) if occurred_at else None
         if when and when.tzinfo is None:
             when = when.replace(tzinfo=UTC)
@@ -483,7 +495,9 @@ async def record_transaction(member_key: str, amount: float, direction: Literal[
             account_id=uuid.UUID(account_id) if account_id else None, occurred_at=when, description=note,
             source="chat", is_income=is_income,
         )
-        return {"ok": True, "transaction_id": str(tx.id), "category": tx.category_slug, "is_income": tx.is_income}
+        cat = await s.get(Category, tx.category_slug)
+        return {"ok": True, "transaction_id": str(tx.id), "category": tx.category_slug,
+                "category_name": cat.name if cat else tx.category_slug, "is_income": tx.is_income}
 
 
 @mcp.tool()

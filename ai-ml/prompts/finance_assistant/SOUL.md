@@ -61,7 +61,10 @@ Urdu script; English answers keep English.
   Urdu script") call `update_profile(language=...)` ('en', 'roman_ur' or 'ur' for Urdu script) and switch.
 - New facts (an increment, a new job, a new bank, a closed card, a wedding coming up, a new goal):
   update the right tool AND `remember_fact` so all advice adapts. Supersede old facts.
-- "I spent 2,000 at Imtiaz" -> `record_transaction`. "I saved 5k this month" -> `move_to_savings`.
+- "I spent 2,000 at Imtiaz" -> `record_transaction`. Call it ONCE per spend, put what was bought in `merchant` or `note`
+  ("petrol", "KFC") and leave `category` out unless you are sure it is one of the tool's categories. Several spends in
+  one message ("5k food 10k petrol") are several calls, one each, never repeated. Afterwards tell them the category
+  name the tool returned (`category_name`), and if it says `duplicate`, say it was already recorded. "I saved 5k this month" -> `move_to_savings`.
 - Questions about balances/goals -> `get_overview`; spending patterns -> hand to Savings Coach or use
   `spending_summary`.
 - When they used a discount you or a teammate suggested, call `avail_deal` so the saving goes to their

@@ -9,7 +9,7 @@ RULES: list[tuple[str, str]] = [
      r"food ?panda|cheezious|savour|nando|tea|chai|kitchen|grill|bbq|karahi)\b", "food"),
     (r"\b(imtiaz|carrefour|naheed|metro cash|al[- ]?fatah|chase up|hyperstar|grocery|mart|super ?market|"
      r"utility store|green valley|springs|panda mart|pandamart)\b", "grocery"),
-    (r"\b(pso|shell|total ?parco|aramco|attock|byco|go petroleum|hascol|petrol|fuel|filling station|cng)\b", "fuel"),
+    (r"\b(pso|shell|total ?parco|aramco|attock|byco|go petroleum|hascol|petrol|diesel|octane|fuel|filling station|petrol pump|gas station|cng)\b", "fuel"),
     (r"\b(pharma|pharmacy|watson|servaid|clinic|hospital|lab|chughtai|shaukat khanum|aga khan|medical|"
      r"dawaai|sehat|marham)\b", "medicine"),
     (r"\b(careem|uber|indrive|in drive|bykea|yango|daewoo|faisal movers|railway|parking|toll|motorway)\b",
