@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Eye, EyeOff, Loader2, Sprout } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { forwardRef, useState } from "react";
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
@@ -93,16 +93,30 @@ export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={clsx("size-5 animate-spin text-muted", className)} aria-label="Loading" />;
 }
 
-/** Peach tile with the sprout mark; `tone="forest"` is the green tile used in the tablet header. */
-export function Logo({ size = 40, withName = true, tone = "peach", nameClassName }: {
-  size?: number; withName?: boolean; tone?: "peach" | "forest"; nameClassName?: string;
+/**
+  The Paisave mark: a clay gullak (money pot) with its coin slot, matching the app icons in public/icons.
+  The pot takes `currentColor`; `slot` colours the coin slot (pass the tile's background for a cut-out look).
+*/
+export function PotMark({ className, style, slot = "var(--primary-ink)" }: {
+  className?: string; style?: React.CSSProperties; slot?: string;
+}) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} style={style} aria-hidden focusable="false">
+      <path fill="currentColor" d="M9.2 1H14.8C15.5 1 15.3 2.2 14.6 2.5C13.9 2.8 13.6 3.4 13.9 4.1C14.6 5.6 20.2 7 20.2 12C20.2 16.4 16.6 19.4 15.6 21.6C15.4 22.2 15.6 23 15.2 23H8.8C8.4 23 8.6 22.2 8.4 21.6C7.4 19.4 3.8 16.4 3.8 12C3.8 7 9.4 5.6 10.1 4.1C10.4 3.4 10.1 2.8 9.4 2.5C8.7 2.2 8.5 1 9.2 1Z" />
+      <path d="M8.7 7.7Q12 7.1 15.3 7.7" fill="none" stroke={slot} strokeWidth={0.9} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Green tile with the peach gullak and its dark slot, the three colours of the app icon. */
+export function Logo({ size = 40, withName = true, nameClassName }: {
+  size?: number; withName?: boolean; nameClassName?: string;
 }) {
   return (
     <span className="inline-flex items-center gap-3">
       <span aria-hidden style={{ width: size, height: size }}
-        className={clsx("grid shrink-0 place-items-center rounded-[30%]",
-          tone === "peach" ? "bg-primary text-forest" : "bg-forest text-primary")}>
-        <Sprout style={{ width: size * 0.5, height: size * 0.5 }} strokeWidth={2.25} />
+        className="grid shrink-0 place-items-center rounded-[30%] bg-forest text-primary">
+        <PotMark style={{ width: size * 0.62, height: size * 0.62 }} />
       </span>
       {withName && <span className={clsx("text-2xl font-bold tracking-tight", nameClassName ?? "text-ink")}>Paisave</span>}
     </span>

@@ -156,7 +156,7 @@ export function AppShell({ children, onChatActivity, sidebar }: {
         <header className="flex items-center gap-3 pt-1 pb-5 max-sm:hidden sm:pb-6 lg:pt-0">
           {/* The logo lives in the sidebar on laptops; tablets show it next to the greeting. */}
           <Link href={isAdmin ? "/admin" : "/dashboard"} aria-label="Paisave home" className="lg:hidden">
-            <Logo size={52} withName={false} tone="forest" />
+            <Logo size={52} withName={false} />
           </Link>
           <div className="min-w-0 flex-1">
             <p className="text-sm text-muted sm:text-base">Assalam o Alaikum,</p>

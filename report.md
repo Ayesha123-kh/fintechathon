@@ -1,4 +1,4 @@
-# Saving: user-perspective test report
+# Paisave: user-perspective test report
 
 **Date:** 20 October 2026 · **Branch:** `osama-ui` at `156122c` · **Tested:** the local Docker Compose stack (web app
 on :3000), which serves this commit (checked against the markup of the last change it ships).
@@ -127,7 +127,7 @@ Findings; none of them is a test artefact.
   "You're offline" page.
 - **Cause:** `reload()` treats any error as "signed out":
   [frontend/src/lib/session.tsx:50](frontend/src/lib/session.tsx#L50).
-- **Fix:** on a network error, show a "can't reach Saving, try again" state (or the offline page), and treat only an
+- **Fix:** on a network error, show a "can't reach Paisave, try again" state (or the offline page), and treat only an
   answer of `state: none` as signed out.
 
 ### 7. Oversized uploads come back as a broken connection through the web proxy (low)
@@ -604,17 +604,17 @@ Two apparent failures during development turned out to be test bugs and were fix
 
 | | Check | Detail |
 |---|---|---|
-| ✅ | laptop: landing page loads (645 ms) | Saving · your savings assistant for Pakistan |
+| ✅ | laptop: landing page loads (645 ms) | Paisave · your savings assistant for Pakistan |
 | ✅ | laptop landing: no sideways scrolling |  |
 | ✅ | Landing explains the product (How it works, chat, deals) |  |
 | ✅ | Landing offers Sign up and Sign in |  |
 | ✅ | No broken images on the landing page |  |
 | ✅ | 'Sign up' leads to the sign-up form |  |
 | ✅ | laptop landing: no JS errors, failed requests or 5xx |  |
-| ✅ | phone: landing page loads (647 ms) | Saving · your savings assistant for Pakistan |
+| ✅ | phone: landing page loads (647 ms) | Paisave · your savings assistant for Pakistan |
 | ✅ | phone landing: no sideways scrolling |  |
 | ✅ | phone landing: no JS errors, failed requests or 5xx |  |
-| ✅ | small phone: landing page loads (656 ms) | Saving · your savings assistant for Pakistan |
+| ✅ | small phone: landing page loads (656 ms) | Paisave · your savings assistant for Pakistan |
 | ✅ | small phone landing: no sideways scrolling |  |
 | ✅ | small phone landing: no JS errors, failed requests or 5xx |  |
 
@@ -651,7 +651,7 @@ Two apparent failures during development turned out to be test bugs and were fix
 | ✅ | The link opens 'Choose a new password' |  |
 | ✅ | Mismatched passwords are caught |  |
 | ✅ | Saving the new password returns to sign in |  |
-| ⚠️ | Sign in confirms the password was changed | Saving Welcome back  Sign in to see your savings and goals.  Email Password Forgot password? Sign in or Fingerprint or face  New here? Create an account |
+| ⚠️ | Sign in confirms the password was changed | Paisave Welcome back  Sign in to see your savings and goals.  Email Password Forgot password? Sign in or Fingerprint or face  New here? Create an account |
 | ✅ | The new password signs in |  |
 | ✅ | The reset signed out the other browser |  |
 | ✅ | password reset flow: no JS errors, failed requests or 5xx |  |
