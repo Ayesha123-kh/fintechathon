@@ -4,6 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, CreditCard, Landmark, X } from "lucide-rea
 import { useEffect, useRef } from "react";
 import useSWR from "swr";
 import { fetcher, rs } from "@/lib/api";
+import { lockPageScroll } from "@/lib/scroll-lock";
 import { SplitDonut } from "./charts";
 import { Spinner } from "./ui";
 
@@ -24,12 +25,11 @@ export function BankModal({ accountId, onClose }: { accountId: string; onClose: 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    closeRef.current?.focus();
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    closeRef.current?.focus({ preventScroll: true });
+    const unlock = lockPageScroll();
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = overflow;
+      unlock();
     };
   }, [onClose]);
 
