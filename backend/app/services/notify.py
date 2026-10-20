@@ -53,12 +53,12 @@ async def notify(
         note = Notification(user_id=user_id, kind=kind, title=title, body=body, url=url)
         s.add(note)
         if kind != "chat":
-            msg = ChatMessage(user_id=user_id, role="bot", sender="Paisav", kind="notification",
+            msg = ChatMessage(user_id=user_id, role="bot", sender="Paisave", kind="notification",
                               text=f"**{title}**\n{body}", final=True, created_at=datetime.now(UTC))
             s.add(msg)
             await s.flush()
             await redis.publish(chat_channel(str(user_id)), json.dumps({"type": "message", "message": {
-                "id": str(msg.id), "role": "bot", "sender": "Paisav", "text": msg.text, "kind": "notification",
+                "id": str(msg.id), "role": "bot", "sender": "Paisave", "text": msg.text, "kind": "notification",
                 "final": True, "created_at": msg.created_at.isoformat() if msg.created_at else None}}))
         subs = list((await s.execute(select(PushSubscription))).scalars())
         if only_if_offline and await redis.exists(presence_key(str(user_id))):
