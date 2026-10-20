@@ -8,6 +8,7 @@ import useSWR from "swr";
 import { api, errorText, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { CHAT_TEXT_MAX, VOICE_MAX_BYTES, VOICE_MAX_SECONDS, VOICE_MIN_SECONDS } from "@/lib/limits";
+import { lockPageScroll } from "@/lib/scroll-lock";
 import { recordWav, type WavRecorder } from "@/lib/wav";
 import { UserPhoto, useMyAvatar } from "./Avatar";
 
@@ -103,16 +104,11 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   openRef.current = open;
 
   // On phones the chat pops up over the page: stop the page underneath from scrolling so only the messages do.
-  // overflow (not position: fixed on the body) keeps the sticky top bar, and its chat icon, where it is; the
-  // backdrop's touch-none covers iOS Safari, which ignores overflow for touch scrolling.
+  // (lockPageScroll keeps the sticky top bar, and its chat icon, where it is; the backdrop's touch-none covers
+  // iOS Safari, which ignores overflow for touch scrolling.)
   useEffect(() => {
     if (!open || !window.matchMedia("(max-width: 639px)").matches) return;
-    const html = document.documentElement.style;
-    const prev = { overflow: html.overflow, overscroll: html.overscrollBehavior };
-    Object.assign(html, { overflow: "hidden", overscrollBehavior: "none" });
-    return () => {
-      Object.assign(html, { overflow: prev.overflow, overscrollBehavior: prev.overscroll });
-    };
+    return lockPageScroll();
   }, [open]);
 
   useEffect(() => {
