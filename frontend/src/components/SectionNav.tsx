@@ -59,6 +59,18 @@ export function usePhone(): boolean {
 }
 
 /**
+ * The section the user just clicked. It stays highlighted until they take over scrolling (wheel, touch or keys).
+ * On a short dashboard the page cannot scroll far enough for a middle section to reach the top, and the
+ * "bottom of the page" rule below would otherwise pick the last section (Deals) whatever was clicked.
+ */
+let pinned: Section | null = null;
+const pinListeners = new Set<() => void>();
+function pinSection(id: Section) {
+  pinned = id;
+  pinListeners.forEach((fn) => fn());
+}
+
+/**
  * Which section to highlight. On a section's own page (/goals etc.) that section; on the dashboard, phones
  * highlight Home and wider screens the section on screen. The dashboard is one scrolling page: each section is
  * an element with id="goals" etc., and the last one whose top has passed a third of the viewport is the active one.
@@ -72,6 +84,10 @@ function useActiveSection(): Section | null {
   useEffect(() => {
     if (!onDashboard) return;
     const update = () => {
+      if (pinned) {
+        setActive(pinned);
+        return;
+      }
       const line = window.innerHeight / 3;
       const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
       let current: Section = "home";
@@ -86,12 +102,26 @@ function useActiveSection(): Section | null {
       }
       setActive(current);
     };
+    const release = () => {
+      if (!pinned) return;
+      pinned = null;
+      update();
+    };
     update();
+    pinListeners.add(update);
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
+    window.addEventListener("wheel", release, { passive: true });
+    window.addEventListener("touchmove", release, { passive: true });
+    window.addEventListener("keydown", release);
     return () => {
+      pinned = null;
+      pinListeners.delete(update);
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      window.removeEventListener("wheel", release);
+      window.removeEventListener("touchmove", release);
+      window.removeEventListener("keydown", release);
     };
   }, [onDashboard]);
   if (onDashboard) return active;
@@ -108,6 +138,7 @@ function SectionLink({ id, className, children }: { id: Section; className: stri
       onClick={(e) => {
         if (pathname !== "/dashboard") return;
         e.preventDefault();
+        pinSection(id);
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         const behavior: ScrollBehavior = reduce ? "auto" : "smooth";
         if (id === "home") window.scrollTo({ top: 0, behavior });
