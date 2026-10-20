@@ -161,7 +161,7 @@ def user_short(user_id: str) -> str:
 
 def user_names(user_id: str) -> dict[str, str]:
     short = user_short(user_id)
-    return {role: f"{title} · {short}" for role, _, title, _ in USER_BOTS} | {"room": f"Bachat · {short}",
+    return {role: f"{title} · {short}" for role, _, title, _ in USER_BOTS} | {"room": f"Paisave · {short}",
                                                                               "team": f"User {short}"}
 
 

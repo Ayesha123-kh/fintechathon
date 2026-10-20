@@ -20,10 +20,10 @@ def upgrade() -> None:
     op.add_column("user_profiles", sa.Column("chat_read_at", sa.DateTime(timezone=True), nullable=True))
     op.execute("SELECT set_config('app.role', 'system', true)")  # tables use FORCE ROW LEVEL SECURITY
     # Every past notification (except announcements of bot replies, which are already chat messages)
-    # becomes a chat message from "Bachat".
+    # becomes a chat message from "Paisave".
     op.execute("""
         INSERT INTO chat_messages (id, user_id, omb_message_id, role, sender, text, kind, final, created_at, updated_at)
-        SELECT gen_random_uuid(), n.user_id, NULL, 'bot', 'Bachat', '**' || n.title || E'**\\n' || n.body,
+        SELECT gen_random_uuid(), n.user_id, NULL, 'bot', 'Paisave', '**' || n.title || E'**\\n' || n.body,
                'notification', true, n.created_at, n.created_at
         FROM notifications n WHERE n.kind <> 'chat'
     """)

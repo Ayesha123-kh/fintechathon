@@ -61,7 +61,7 @@ Limits: only deals the advisor offered are tracked (so the advisor must call `of
 
 ## 3. Scheduled jobs in the worker
 
-Plain code, no bots involved. Two of them call the self-hosted model for small structured tasks (merchant screening, and Gmail parsing when the regex fails). Each job below that notifies creates a notification, which also appears in the chat as an unread "Bachat" message and goes out as a push (VAPID web push). All of them skip admins, inactive users and users who haven't finished onboarding.
+Plain code, no bots involved. Two of them call the self-hosted model for small structured tasks (merchant screening, and Gmail parsing when the regex fails). Each job below that notifies creates a notification, which also appears in the chat as an unread "Paisave" message and goes out as a push (VAPID web push). All of them skip admins, inactive users and users who haven't finished onboarding.
 
 | Job | Schedule | Behaviour |
 |---|---|---|
