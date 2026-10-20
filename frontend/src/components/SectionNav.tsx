@@ -6,8 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Logo } from "./ui";
 
-export type Section = "home" | "goals" | "spending" | "banks" | "deals";
-const SECTIONS: { id: Section; label: string }[] = [
+export type Section = "home" | "goals" | "spending" | "banks" | "deals" | "activity";
+type Item = { id: Section; label: string; href?: string };
+
+/** Laptops (sidebar) and tablets (bottom bar): the dashboard's sections, which they scroll to. */
+const SECTIONS: Item[] = [
   { id: "home", label: "Home" },
   { id: "goals", label: "Goals" },
   { id: "spending", label: "Spending" },
@@ -15,11 +18,17 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: "deals", label: "Deals" },
 ];
 
-/** Phones put Home in the middle of the bottom bar. */
-const PHONE_ORDER: Section[] = ["goals", "spending", "home", "banks", "deals"];
-
-/** Each section's own page (phones open these from the bottom nav). */
-const PAGE: Record<Section, string> = { home: "/dashboard", goals: "/goals", spending: "/spending", banks: "/banks", deals: "/deals" };
+/**
+ * Phones: one page per item, Home in the middle. Home holds the balance and the banks; goals, spending, deals and
+ * recent activity each have their own page.
+ */
+const PHONE: Required<Item>[] = [
+  { id: "goals", label: "Goals", href: "/goals" },
+  { id: "spending", label: "Spending", href: "/spending" },
+  { id: "home", label: "Home", href: "/dashboard" },
+  { id: "deals", label: "Deals", href: "/deals" },
+  { id: "activity", label: "Activity", href: "/activity" },
+];
 
 /*
   Phone page transitions (about 1 s in all). Tapping an item slides the peach highlight over to it while the
@@ -86,7 +95,7 @@ function useActiveSection(): Section | null {
     };
   }, [onDashboard]);
   if (onDashboard) return active;
-  const page = SECTIONS.find(({ id }) => id !== "home" && pathname.startsWith(PAGE[id]));
+  const page = PHONE.find(({ id, href }) => id !== "home" && pathname.startsWith(href));
   return page ? page.id : pathname === "/dashboard" ? "home" : null;
 }
 
@@ -153,16 +162,16 @@ export function BottomNav() {
   // The highlight moves to the tapped item at once, before its page has opened.
   const [popped, setPopped] = useState<Section | null>(null);
   const selected = popped ?? active;
-  const items = phone ? PHONE_ORDER.map((id) => SECTIONS.find((x) => x.id === id)!) : SECTIONS;
+  const items: Item[] = phone ? PHONE : SECTIONS;
   const selectedIndex = items.findIndex(({ id }) => id === selected);
-  const go = (e: React.MouseEvent, id: Section) => {
+  const go = (e: React.MouseEvent, id: Section, href: string) => {
     if (active === id || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; // plain navigation
     e.preventDefault();
     setPopped(id);
     document.documentElement.classList.add("page-leaving");
     tappedAt = performance.now();
-    setTimeout(() => router.push(PAGE[id]), LEAVE_MS);
+    setTimeout(() => router.push(href), LEAVE_MS);
     // Safety net: never leave the page dimmed if the navigation doesn't happen.
     setTimeout(() => document.documentElement.classList.remove("page-leaving"), 2500);
   };
@@ -183,10 +192,10 @@ export function BottomNav() {
             <li aria-hidden className="nav-slider absolute top-2 bottom-2 left-2 rounded-full bg-primary"
               style={{ "--i": selectedIndex } as React.CSSProperties} />
           )}
-          {items.map(({ id, label }) => (
+          {items.map(({ id, label, href = "/dashboard" }) => (
             <li key={id} className="min-w-0 flex-1 basis-0 sm:flex-none sm:basis-auto">
               {phone ? (
-                <Link href={PAGE[id]} aria-current={active === id ? "page" : undefined} onClick={(e) => go(e, id)}
+                <Link href={href} aria-current={active === id ? "page" : undefined} onClick={(e) => go(e, id, href)}
                   className={clsx("relative flex h-12 items-center justify-center rounded-full px-1 text-[13px] whitespace-nowrap transition-colors duration-300",
                   selected === id ? "font-semibold text-primary-ink" : "text-side-ink hover:text-forest-ink")}>
                   {label}
