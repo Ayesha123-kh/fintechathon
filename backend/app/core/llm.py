@@ -72,7 +72,32 @@ _LATIN = r"[\x20-\x7E\n]*"
 _URDU = r"[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF0-9 \n]*"  # Arabic-script letters, Urdu punctuation
 
 
+# OpenAI's own speech-to-text (whisper-1, gpt-4o-mini-transcribe ...) is an audio endpoint, not a chat model, and it
+# knows nothing about grammars. Used when STT_BASE_URL is api.openai.com; the prompt steers Urdu into Roman Urdu.
+_OPENAI_PROMPT_LATIN = (
+    "The speaker may use English, Urdu or Hindi. Write English in English. Write Urdu or Hindi speech in Roman Urdu "
+    "(Urdu in Latin letters), for example: mujhe sasta khana chahiye."
+)
+_OPENAI_PROMPT_URDU = "اردو میں لکھیں۔ English words may stay in English."
+
+
+def _openai_stt() -> bool:
+    return "api.openai.com" in str(settings.stt_base_url)
+
+
+async def _transcribe_openai(wav: bytes, urdu_script: bool) -> str:
+    resp = await stt.audio.transcriptions.create(
+        model=settings.stt_model,
+        file=("voice.wav", wav, "audio/wav"),
+        prompt=_OPENAI_PROMPT_URDU if urdu_script else _OPENAI_PROMPT_LATIN,
+        temperature=0,
+    )
+    return (resp.text or "").strip()
+
+
 async def transcribe(wav: bytes, urdu_script: bool = False) -> str:
+    if _openai_stt():
+        return await _transcribe_openai(wav, urdu_script)
     seconds = (len(wav) - 44) / max(1, int.from_bytes(wav[28:32], "little"))  # WAV header byte rate
     urdu = _URDU if urdu_script else _LATIN
     resp = await stt.chat.completions.create(
