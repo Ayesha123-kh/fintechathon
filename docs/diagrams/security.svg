@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" width="900" height="470" font-family="Helvetica,Arial,sans-serif"><title>Security boundaries and permission tiers</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#16423C"/></marker></defs>
+<rect width="900" height="470" fill="#F7F0E5"/>
+<rect x="10" y="10" width="280" height="150" rx="10" fill="#F2B49B" stroke="#16423C" stroke-width="1.5"/>
+<text x="150.0" y="57.55" text-anchor="middle" font-size="13" font-weight="700" fill="#211913">USER ZONE (private)</text>
+<text x="150.0" y="73.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">Finance Assistant · Savings Coach</text>
+<text x="150.0" y="89.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">Deals Advisor · Investment Advisor</text>
+<text x="150.0" y="105.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">tools: fin_user (≈32, not 72)</text>
+<text x="150.0" y="121.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">identity: member_key from own room</text>
+<rect x="310" y="10" width="280" height="150" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="450.0" y="57.55" text-anchor="middle" font-size="13" font-weight="700" fill="#211913">SHARED DESK ZONE (public data)</text>
+<text x="450.0" y="73.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">29 watcher / researcher / analyst /</text>
+<text x="450.0" y="89.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">crawler bots</text>
+<text x="450.0" y="105.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">tools: fin_market only</text>
+<text x="450.0" y="121.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">sees NO user id, balance or transaction</text>
+<rect x="610" y="10" width="280" height="150" rx="10" fill="#F7F0E5" stroke="#16423C" stroke-width="1.5"/>
+<text x="750.0" y="57.55" text-anchor="middle" font-size="13" font-weight="700" fill="#211913">ADMIN ZONE</text>
+<text x="750.0" y="73.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">separate admin accounts (no finances)</text>
+<text x="750.0" y="89.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">manage users, deals, agents</text>
+<text x="750.0" y="105.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">every action → audit_log</text>
+<text x="750.0" y="121.55" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">cannot chat as a user</text>
+<line x1="150" y1="160" x2="150" y2="200" stroke="#16423C" stroke-width="1.8" marker-end="url(#a)"/>
+<text x="160" y="185" text-anchor="start" font-size="11" font-weight="400" fill="#211913">member_key resolves to ONE user</text>
+<rect x="10" y="205" width="440" height="95" rx="10" fill="#F7F0E5" stroke="#16423C" stroke-width="1.5"/>
+<text x="230.0" y="233.05" text-anchor="middle" font-size="13" font-weight="700" fill="#211913">PostgreSQL Row-Level Security</text>
+<text x="230.0" y="249.05" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">every request runs in a transaction that sets</text>
+<text x="230.0" y="265.05" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">app.user_id + app.role · FORCE RLS on owner too</text>
+<text x="230.0" y="281.05" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">a bug or a confused agent still cannot read another user&#x27;s rows</text>
+<line x1="450" y1="252" x2="490" y2="252" stroke="#16423C" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="495" y="205" width="395" height="95" rx="10" fill="#F7F0E5" stroke="#16423C" stroke-width="1.5"/>
+<text x="692.5" y="234.2" text-anchor="middle" font-size="12" font-weight="700" fill="#211913">Fail-closed merchant screen</text>
+<text x="692.5" y="249.2" text-anchor="middle" font-size="10" font-weight="400" fill="#211913">self-hosted model labels each payee: business or person</text>
+<text x="692.5" y="264.2" text-anchor="middle" font-size="10" font-weight="400" fill="#211913">&#x27;Transfer to Ali Khan&#x27; → personal, never shown to shared bots</text>
+<text x="692.5" y="279.2" text-anchor="middle" font-size="10" font-weight="400" fill="#211913">model offline → stays hidden</text>
+<rect x="10" y="325" width="880" height="135" rx="10" fill="#F7F0E5" stroke="#16423C" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="450.0" y="397.05" text-anchor="middle" font-size="13" font-weight="700" fill="#211913"></text>
+<text x="24" y="347" text-anchor="start" font-size="13" font-weight="700" fill="#16423C">What no tier can do</text>
+<text x="34" y="372" text-anchor="start" font-size="12" font-weight="400" fill="#211913">✗  Initiate a payment, transfer or any write to a bank (our &#x27;move to savings&#x27; is a ledger entry only)</text>
+<text x="34" y="394" text-anchor="start" font-size="12" font-weight="400" fill="#211913">✗  Store card digits, CVV, PIN or OTP (only network, tier, debit/credit are kept)</text>
+<text x="34" y="416" text-anchor="start" font-size="12" font-weight="400" fill="#211913">✗  Read anything beyond bank-alert emails (Gmail scope = gmail.readonly, tokens encrypted at rest)</text>
+<text x="34" y="438" text-anchor="start" font-size="12" font-weight="400" fill="#211913">✗  Create bots or rooms, run commands, or read other users&#x27; chats from a user&#x27;s agent</text></svg>
