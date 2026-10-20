@@ -34,3 +34,17 @@ def transaction_kind(subject: str) -> str:
 def transaction_title(merchant: str, description: str) -> str:
     """What a transaction is called in lists: the shop or person, else what kind of transaction it was."""
     return merchant or transaction_kind(description)
+
+
+_UNREACHABLE = ("fetch failed", "timeout", "timed out", "econn", "enotfound", "unreachable", "network")
+
+
+def assistant_failure_message(raw: str) -> str:
+    """What the person reads when an assistant turn fails: a refused step is not the same as a model that cannot be reached."""
+    low = (raw or "").lower()
+    if "tool operation" in low or "denied" in low:
+        return ("Your assistant couldn't finish that just now: one of the steps it tried was rejected, so nothing "
+                "may have been saved. Please check the details (names, amounts, dates) and try again.")
+    if any(word in low for word in _UNREACHABLE):
+        return "Your assistant couldn't reply just now (the AI service is unreachable). Please try again in a moment."
+    return "Your assistant couldn't reply just now. Please try again in a moment."
