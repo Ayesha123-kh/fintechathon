@@ -290,3 +290,23 @@ body {
 [data-section] {
   scroll-margin-top: 1.25rem;
 }
+
+/* ---------- Landing page: the hero's pieces rise in once ---------- */
+@keyframes land-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.land-rise {
+  animation: land-rise 0.7s cubic-bezier(0.22, 0.8, 0.25, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .land-rise {
+    animation: none;
+  }
+}
