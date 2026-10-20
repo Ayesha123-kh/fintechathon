@@ -20,7 +20,8 @@ export function AuthActions({ place }: { place: "header" | "hero" | "band" }) {
     return <span aria-hidden className={header ? "block h-11 w-36 sm:w-44" : "block h-13 w-72"} />;
   }
 
-  if (status === "active" && user) {
+  // A locked session is still signed in: its dashboard opens on the lock screen.
+  if ((status === "active" || status === "locked") && user) {
     const admin = user.role === "admin";
     const home = admin ? "/admin" : "/dashboard";
     const name = user.full_name || user.email;
