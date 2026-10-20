@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { AlertCircle, Bell, Loader2, Mail, MessageCircleMore, Mic, Send, ShieldCheck, Sprout, Square, X } from "lucide-react";
+import { AlertCircle, Bell, Loader2, Mail, MessageCircleMore, Mic, Send, ShieldCheck, Square, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import useSWR from "swr";
@@ -11,6 +11,7 @@ import { CHAT_TEXT_MAX, VOICE_MAX_BYTES, VOICE_MAX_SECONDS, VOICE_MIN_SECONDS } 
 import { lockPageScroll } from "@/lib/scroll-lock";
 import { recordWav, type WavRecorder } from "@/lib/wav";
 import { UserPhoto, useMyAvatar } from "./Avatar";
+import { GroupAvatar, MEMBERS, MemberAvatar, type MemberKey, memberOf } from "./ChatMembers";
 
 type Msg = { id: string; role: "user" | "bot" | "system"; sender: string; text: string; kind?: string; final: boolean; created_at: string | null };
 // Live progress of the assistant's turn: what it is thinking and which tool it is using. Never stored.
@@ -40,6 +41,8 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
   // Bumped on every sign of life from the assistant; the "taking longer" notice only fires after real silence.
   const [lastSign, setLastSign] = useState(0);
   const [status, setStatus] = useState<string>("pending");
+  // The advisors in this person's chat (the Investment Advisor only joins when they opt in).
+  const [members, setMembers] = useState<MemberKey[]>(["assistant", "savings", "deals"]);
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
@@ -200,7 +203,14 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
     setReadAt(readAtRef.current ?? "1970-01-01T00:00:00Z");
     setUnread(0);
     api("/chat/read", { method: "POST" }).catch(() => {});
-    api<{ status: string }>("/chat/status").then((s) => setStatus(s.status)).catch(() => setStatus("error"));
+    api<{ status: string; advisors?: string[] }>("/chat/status").then((s) => {
+      setStatus(s.status);
+      // In a fixed order, the Finance Assistant (who leads) first.
+      const order = Object.keys(MEMBERS) as MemberKey[];
+      if (s.advisors?.length) {
+        setMembers([...new Set(s.advisors.map((a) => memberOf({ sender: a })))].sort((a, b) => order.indexOf(a) - order.indexOf(b)));
+      }
+    }).catch(() => setStatus("error"));
     return () => {
       // Everything seen in this session is read now.
       readAtRef.current = new Date().toISOString();
@@ -335,9 +345,9 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
           className="bubble-pop fixed right-4 z-40 w-[min(22rem,calc(100vw-2rem))] max-sm:top-[calc(max(0.75rem,env(safe-area-inset-top))+3.75rem)] sm:right-[6.75rem] sm:bottom-[calc(var(--bottom-nav)+1.5rem)]">
           <button onClick={() => setOpen(true)}
             className="relative block w-full rounded-2xl bg-surface px-5 py-4 text-left shadow-[0_12px_32px_rgb(16_26_20/0.12)] transition hover:brightness-[0.98]">
-            <span className="mb-0.5 flex items-center gap-1 pr-6 text-sm font-bold text-forest dark:text-primary">
-              {preview.kind === "notification" && <Bell className="size-3.5" aria-hidden />}
-              {preview.kind === "notification" ? "Saving" : "Saving assistant"}
+            <span className={clsx("mb-1 flex items-center gap-2 pr-6 text-sm font-bold", MEMBERS[memberOf(preview)].nameColor)}>
+              <MemberAvatar who={memberOf(preview)} size="xs" />
+              {preview.kind === "notification" ? MEMBERS.app.name : preview.sender || MEMBERS.assistant.name}
             </span>
             <span className="line-clamp-3 text-[15px] leading-snug text-ink-2">{plain(preview.text)}</span>
           </button>
@@ -381,14 +391,16 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
           <section className="relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-[var(--radius-card)] bg-surface shadow-2xl sm:h-[min(780px,calc(100dvh-3rem))] sm:w-[min(500px,calc(100vw-3rem))] lg:w-[540px]">
             <header className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3.5 sm:px-5 sm:py-4">
               <span className="relative">
-                <AssistantAvatar size="lg" />
+                <GroupAvatar members={members} />
                 <span className={clsx("absolute -right-0.5 -bottom-0.5 size-3.5 rounded-full ring-2 ring-surface",
                   status === "ready" ? "bg-[#3fb37f]" : status === "error" ? "bg-alert" : "bg-badge")} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-lg leading-tight font-bold text-ink">Saving assistant</p>
+                <p className="text-lg leading-tight font-bold text-ink">Your money team</p>
                 <p className="truncate text-sm text-muted">
-                  {waiting ? (activity?.state === "tool" ? "working…" : "typing…") : status === "ready" ? "Online · Savings Coach · Deals Advisor" : status === "error" ? "Reconnecting…" : "Setting up your assistant…"}
+                  {waiting ? `${activity?.sender || MEMBERS.assistant.name} is ${activity?.state === "tool" ? "working" : "typing"}…`
+                    : status === "ready" ? [...members.map((k) => MEMBERS[k].name), "You"].join(", ")
+                    : status === "error" ? "Reconnecting…" : "Setting up your assistant…"}
                 </p>
               </div>
               <button onClick={close} aria-label="Close chat" className="grid size-10 place-items-center rounded-full text-ink-2 hover:bg-hover">
@@ -396,10 +408,12 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
               </button>
             </header>
 
-            {/* WhatsApp-style thread: the assistant on the left, you on the right, a date pill whenever the day changes. */}
+            {/* WhatsApp-style group thread: each advisor on the left with their own avatar and name colour, you on the
+                right, a date pill whenever the day changes. */}
             <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-bg px-3 py-5 sm:px-5">
               {messages.length === 0 && (
-                <Row side="left" avatar>
+                <Row side="left" who="assistant" avatar>
+                  <p className={clsx("mb-1 px-1 text-xs font-semibold", MEMBERS.assistant.nameColor)}>{MEMBERS.assistant.name}</p>
                   <div className="chat-text rounded-2xl rounded-bl-md bg-surface px-4 py-3 text-[15px] leading-relaxed text-ink shadow-sm">
                     Assalam o Alaikum{user?.full_name ? ` ${user.full_name.split(" ")[0]}` : ""}! 👋 I&apos;m your savings
                     assistant. Tell me about your banks, cards and what you&apos;re saving for, and I&apos;ll build a plan
@@ -410,13 +424,13 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
               {messages.map((m, i) => {
                 const prev = messages[i - 1];
                 const next = messages[i + 1];
-                const side = (x?: Msg) => (x ? (x.role === "user" ? "right" : "left") : null);
+                const who = (x?: Msg) => (x ? (x.role === "user" ? "me" : memberOf(x)) : null);
                 const newDay = !prev || dayKey(prev.created_at) !== dayKey(m.created_at);
                 const firstUnread = readAt !== null && m.role === "bot" && isAfter(m.created_at, readAt) &&
                   !messages.slice(0, i).some((p) => p.role === "bot" && isAfter(p.created_at, readAt));
-                const startsGroup = newDay || firstUnread || side(prev) !== side(m);
+                const startsGroup = newDay || firstUnread || who(prev) !== who(m);
                 const nextNewDay = !!next && dayKey(next.created_at) !== dayKey(m.created_at);
-                const endsGroup = !next || nextNewDay || side(next) !== side(m);
+                const endsGroup = !next || nextNewDay || who(next) !== who(m);
                 return (
                   <Fragment key={m.id}>
                     {newDay && m.created_at && (
@@ -437,7 +451,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
               })}
               {waiting && (activity ? activity.state !== "writing" : !(messages.at(-1)?.role === "bot" && !messages.at(-1)?.final)) && (
                 <div className="mt-3" aria-live="polite">
-                  <Row side="left" avatar>
+                  <Row side="left" who={activity?.sender ? memberOf({ sender: activity.sender }) : "assistant"} avatar>
                     <div className="space-y-1.5 rounded-2xl rounded-bl-md bg-surface px-4 py-3 text-sm text-muted shadow-sm">
                       <div className="flex items-center gap-2">
                         {activity ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : (
@@ -591,19 +605,10 @@ function dayLabel(d: string) {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
-/** The assistant's round sprout avatar, in the dashboard's peach and green. */
-function AssistantAvatar({ size = "sm" }: { size?: "sm" | "lg" }) {
-  return (
-    <span aria-hidden className={clsx("grid shrink-0 place-items-center rounded-full bg-primary text-forest",
-      size === "lg" ? "size-11" : "size-8")}>
-      <Sprout className={size === "lg" ? "size-5" : "size-4"} strokeWidth={2.25} />
-    </span>
-  );
-}
-
-/** One side of the thread. The assistant's side keeps a column for its avatar so its bubbles line up. */
-function Row({ side, avatar, photo, children }: {
-  side: "left" | "right"; avatar?: boolean; photo?: string | null; children: React.ReactNode;
+/** One side of the thread. The advisors' side keeps a column for their avatars so the bubbles line up; `who` picks
+ *  the avatar, shown on the last bubble of each run (`avatar`). */
+function Row({ side, who = "assistant", avatar, photo, children }: {
+  side: "left" | "right"; who?: MemberKey; avatar?: boolean; photo?: string | null; children: React.ReactNode;
 }) {
   if (side === "right") {
     // No profile photo: your bubbles as always. With one, it sits beside the last bubble of each run of your
@@ -618,7 +623,7 @@ function Row({ side, avatar, photo, children }: {
   }
   return (
     <div className="flex items-end gap-2 pr-12 sm:pr-16">
-      {avatar ? <AssistantAvatar /> : <span className="w-8 shrink-0" aria-hidden />}
+      {avatar ? <MemberAvatar who={who} /> : <span className="w-8 shrink-0" aria-hidden />}
       <div className="min-w-0">{children}</div>
     </div>
   );
@@ -639,12 +644,13 @@ function Bubble({ m, first, last, myPhoto }: { m: Msg; first: boolean; last: boo
     );
   }
   const tone = m.kind === "notification" ? "bg-deal-bg text-ink" : m.role === "system" ? "bg-danger/10 text-danger" : "bg-surface text-ink";
+  const who = memberOf(m);
   return (
-    <Row side="left" avatar={last}>
-      {first && (m.kind === "notification" || m.sender) && (
-        <p className="mb-1 flex items-center gap-1 px-1 text-xs font-semibold text-forest dark:text-primary">
+    <Row side="left" who={who} avatar={last}>
+      {first && (
+        <p className={clsx("mb-1 flex items-center gap-1 px-1 text-xs font-semibold", MEMBERS[who].nameColor)}>
           {m.kind === "notification" && <Bell className="size-3" aria-hidden />}
-          {m.kind === "notification" ? "Saving" : m.role === "system" ? "Saving assistant" : m.sender}
+          {who === "app" ? MEMBERS.app.name : m.sender || MEMBERS[who].name}
         </p>
       )}
       <div role={m.role === "system" ? "status" : undefined}
