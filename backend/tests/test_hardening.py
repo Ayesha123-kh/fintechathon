@@ -85,7 +85,9 @@ def test_security_headers_and_no_caching_of_api_data():
 
 
 def test_production_refuses_example_secrets():
-    example = Settings(_env_file=None, environment="production", jwt_secret="change-me", encryption_key="",
+    example = Settings(_env_file=None, environment="production", jwt_secret="change-me",
+                       internal_api_key="change-me-internal", mcp_user_token="change-me-mcp-user",
+                       mcp_market_token="change-me-mcp-market", encryption_key="",
                        admin_email="admin@example.com", admin_password="change-me-admin", cookie_secure=False)
     assert {"JWT_SECRET", "INTERNAL_API_KEY", "ENCRYPTION_KEY", "ADMIN_PASSWORD", "COOKIE_SECURE"} <= set(
         example.unsafe_for_production())
