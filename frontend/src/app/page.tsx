@@ -101,7 +101,7 @@ export default function LandingPage() {
         <section aria-labelledby="hero-title" className="relative">
           <div aria-hidden className="pointer-events-none absolute -top-40 right-[-12rem] size-[34rem] rounded-full bg-primary/30 blur-3xl" />
           <div aria-hidden className="pointer-events-none absolute top-[28rem] -left-48 size-[26rem] rounded-full bg-forest-muted/30 blur-3xl" />
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[1.05fr_1fr] lg:gap-10 lg:pt-20 lg:pb-24">
+          <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 lg:grid-cols-[1.05fr_1fr] lg:gap-10 lg:pt-20 lg:pb-24">
             <div>
               <Eyebrow><Sparkles className="size-4" aria-hidden /> Your savings assistant for Pakistan</Eyebrow>
               <h1 id="hero-title" className="mt-6 text-[2.6rem] leading-[1.05] font-bold tracking-tight text-ink sm:text-6xl">
@@ -176,7 +176,7 @@ export default function LandingPage() {
         </section>
 
         {/* ---------------------------------------------------------------- chat highlight */}
-        <section aria-labelledby="chat-title" className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 sm:px-6 sm:pb-28 lg:grid-cols-2 lg:gap-16">
+        <section aria-labelledby="chat-title" className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 pb-20 sm:px-6 sm:pb-28 lg:grid-cols-2 lg:gap-16">
           <div className="lg:order-2">
             <Eyebrow><MessageCircleMore className="size-4" aria-hidden /> Chat-first</Eyebrow>
             <h2 id="chat-title" className="mt-5 text-3xl leading-tight font-bold tracking-tight text-ink sm:text-[2.75rem]">
@@ -196,7 +196,7 @@ export default function LandingPage() {
         </section>
 
         {/* ---------------------------------------------------------------- deals highlight */}
-        <section aria-labelledby="deals-title" className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 sm:px-6 sm:pb-28 lg:grid-cols-2 lg:gap-16">
+        <section aria-labelledby="deals-title" className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 pb-20 sm:px-6 sm:pb-28 lg:grid-cols-2 lg:gap-16">
           <div>
             <Eyebrow><BadgePercent className="size-4" aria-hidden /> Deals</Eyebrow>
             <h2 id="deals-title" className="mt-5 text-3xl leading-tight font-bold tracking-tight text-ink sm:text-[2.75rem]">
