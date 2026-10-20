@@ -144,8 +144,9 @@ Each use case names the actor, the trigger, what the agent does and the measurab
 - **Least-privilege tools per agent.** Allow-lists are set per bot in `ai-ml/gateway/teams.py`.
 - **Authentication.** Argon2 password hashing; short-lived JWT access token plus a rotating refresh token held in a server-side session; sign-up needs an emailed OTP; passkeys (fingerprint / face) via WebAuthn.
 - **Bank-app-style idle lock.** After inactivity the session is *locked*: the API answers 423 until the user re-enters a password or uses a passkey. Unlock attempts are limited.
+- **Browser protections.** Session cookies are `HttpOnly` and `SameSite=Lax`, with `Secure` switched on in production. Every cookie-authenticated write must carry a custom header that cross-site forms cannot send, otherwise the API answers 403.
 - **Abuse limits.** Rate limits on sign-up (10 per hour per IP), OTP verify, resend, sign-in (8 per 15 minutes per IP and email), password reset, unlock and tool calls.
-- **Data minimisation.** Card numbers, CVV, PIN and OTP are never requested or stored. Only network, tier and debit/credit are kept. If a user types digits, the agent tells them not to share and does not store them. Gmail access is `gmail.readonly`, and only bank-alert messages are parsed. Gmail tokens are encrypted at rest (Fernet).
+- **Data minimisation.** Card numbers, CVV, PIN and OTP are never requested or stored. Only network, tier and debit/credit are kept. A bank account keeps an optional last-4 of the account number, read from alerts so they match the right account. Of each Gmail message we keep only its id and subject, never the body. If a user types digits, the agent tells them not to share and does not store them. Gmail access is `gmail.readonly`, and only bank-alert messages are parsed. Gmail tokens are encrypted at rest (Fernet).
 - **Privacy boundary for third-party models.** User chats, advisors and bank-email parsing run only on the **self-hosted** model. The shared desks may be pointed at a third-party LLM because they handle public data only. The one user-derived input they receive is merchant names, and every new merchant is first screened by the self-hosted model so a private payee ("Transfer to Ali Khan") is marked `personal` and never reaches a shared bot. The screening **fails closed**: if the model is offline the merchant stays hidden.
 - **Secrets.** One root `.env` (git-ignored). The agents container receives only the 16 variables it needs, so JWT, encryption, SMTP, OAuth and database-owner secrets never reach it.
 - **Auditability.** Admin actions are logged. Each deal saving, ledger entry and transaction records its source (`gmail`, `chat`, `deal`).
@@ -173,6 +174,7 @@ We list these openly because the Security self-assessment asks for them.
 | 8 | **Demo data migration** (`0002_demo_data`) exists for evaluation. | Skipped when `ENVIRONMENT=production`; removal is documented. |
 | 9 | **OpenMausBot image** is pinned to `latest` in the Dockerfile. | To be pinned to a release tag before production. |
 | 10 | **Third-party data** (market prices, scraped PSX data, deal pages) may be wrong or stale. | Shown as signals with sources and a disclaimer; investment feature is opt-in. |
+| 11 | **Cookie `Secure` flag** is off by default for local development. | Must be `COOKIE_SECURE=true` over HTTPS in production; listed in the deployment checklist. |
 
 # 6. Innovation and interaction (30% of the score)
 
