@@ -1,7 +1,7 @@
 """Notifications live in the chat: track when the chat was last read and copy old notifications into it.
 
-Revision ID: 0004
-Revises: 0003
+Revision ID: 0011
+Revises: 0010
 """
 
 from collections.abc import Sequence
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0004"
-down_revision: str | None = "0003"
+revision: str = "0006"
+down_revision: str | None = "0005"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
