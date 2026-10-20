@@ -191,8 +191,8 @@ export function GoalsCard({ goals, id, className, showAll = false }: { goals: Da
                     <span />
                   </ProgressRing>
                 </span>
-                <span className="min-w-0 flex-1 sm:mt-5">
-                  <span className="block truncate font-bold text-ink sm:text-xl">{g.name}</span>
+                <span className="min-w-0 flex-1 sm:mt-5 sm:w-full">
+                  <span className="line-clamp-2 block font-bold break-words text-ink sm:text-xl">{g.name}</span>
                   <span className="tabular mt-0.5 block text-sm text-muted sm:mt-1.5 sm:text-base">Rs. {short(g.saved)} of {short(g.target)}</span>
                   <span className="mt-1 hidden text-sm text-muted sm:block">
                     {g.deadline && g.status !== "completed" ? `by ${monthYear(g.deadline)}` : when(g)}
