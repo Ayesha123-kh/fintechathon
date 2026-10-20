@@ -118,7 +118,7 @@ async def deprovision(short: str) -> dict:
     async with lock:
         snap = await omb.snapshot()
         for g in snap.get("groups", []):
-            if g.get("name") == f"Bachat · {short}":
+            if g.get("name") == f"Paisave · {short}":
                 relay.room_threads.discard(g.get("threadId"))
                 try:  # a room that is mid-turn refuses deletion, so stop it first
                     await omb.request("POST", f"/api/groups/{g['id']}/interrupt", json={})
@@ -148,8 +148,8 @@ async def remove_orphans() -> int:
     known = {teams.user_short(uid) for uid in await backend("GET", "/agents/known-users")}
     snap = await omb.snapshot()
     present = {sec.removeprefix("User ") for sec in snap.get("sections", []) if sec.startswith("User ")}
-    present |= {g["name"].removeprefix("Bachat · ") for g in snap.get("groups", [])
-                if str(g.get("name", "")).startswith("Bachat · ")}
+    present |= {g["name"].removeprefix("Paisave · ") for g in snap.get("groups", [])
+                if str(g.get("name", "")).startswith("Paisave · ")}
     orphans = present - known
     for short in orphans:
         try:

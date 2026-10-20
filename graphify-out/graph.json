@@ -6232,7 +6232,7 @@
       "id": "ai_ml_prompts_psx_analyst_soul_analysis_cycle"
     },
     {
-      "label": "Offline fallback page (Bachat PWA)",
+      "label": "Offline fallback page (Paisave PWA)",
       "file_type": "code",
       "source_file": "frontend/public/offline.html",
       "source_location": null,

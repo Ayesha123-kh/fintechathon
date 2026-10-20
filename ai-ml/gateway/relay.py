@@ -36,7 +36,7 @@ class Relay:
     async def load_rooms(self) -> None:
         snap = await omb.snapshot()
         for g in snap.get("groups", []):
-            if str(g.get("name", "")).startswith("Bachat · ") and g.get("threadId"):
+            if str(g.get("name", "")).startswith("Paisave · ") and g.get("threadId"):
                 self.room_threads.add(g["threadId"])
 
     async def run(self) -> None:
@@ -81,7 +81,7 @@ class Relay:
         kind = event.get("kind")
         if kind == "group":
             g = event.get("group") or {}
-            if str(g.get("name", "")).startswith("Bachat · ") and g.get("threadId"):
+            if str(g.get("name", "")).startswith("Paisave · ") and g.get("threadId"):
                 self.room_threads.add(g["threadId"])
             return
         if kind == "runtime":

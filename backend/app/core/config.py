@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     admin_email: str = ""
     admin_password: str = ""
     # Login email of the demo user created by the temporary demo-data migration.
-    demo_user_email: str = "demo@bachat.pk"
+    demo_user_email: str = "paisave.demo@gmail.com"
 
     @property
     def is_production(self) -> bool:

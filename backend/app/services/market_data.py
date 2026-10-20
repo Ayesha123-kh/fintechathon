@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 from app.core.cache import redis
 
 log = logging.getLogger(__name__)
-UA = {"User-Agent": "Mozilla/5.0 (compatible; BachatResearchBot/1.0)"}
+UA = {"User-Agent": "Mozilla/5.0 (compatible; PaisaveResearchBot/1.0)"}
 TOLA_GRAMS = 11.6638
 TROY_OUNCE_GRAMS = 31.1035
 
