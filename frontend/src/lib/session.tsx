@@ -68,10 +68,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  // The landing page is never locked: it shows nothing private. A locked session (or one that went idle there, which
+  // the server notices on its own) gets the lock screen as soon as the person heads into the app.
+  const onLanding = pathname === "/";
+
   // Banking-app style idle lock: after N minutes without interaction, lock the UI immediately
   // (the server independently refuses requests after the same idle period).
   useEffect(() => {
-    if (state.status !== "active") return;
+    if (state.status !== "active" || onLanding) return;
     const bump = () => (lastActivity.current = Date.now());
     const events = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
     events.forEach((e) => window.addEventListener(e, bump, { passive: true }));
@@ -87,7 +91,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       document.removeEventListener("visibilitychange", onVisible);
       clearInterval(timer);
     };
-  }, [state.status, state.idleMinutes, lock]);
+  }, [state.status, state.idleMinutes, lock, onLanding]);
 
   // Route guard.
   useEffect(() => {
@@ -118,7 +122,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionContext.Provider value={{ ...state, reload, setUser, lock, signOut }}>
-      {state.status === "locked" ? (
+      {state.status === "locked" && !onLanding ? (
         <LockScreen
           user={state.user}
           hasPasskey={state.hasPasskey}
