@@ -11,8 +11,9 @@ import { Card, Empty } from "@/components/ui";
 import { fetcher, rs } from "@/lib/api";
 
 /*
-  The dashboard's cards, shared by /dashboard (all of them) and the phone pages /goals, /spending, /banks and
-  /deals (one each). Every page reads the same /dashboard response, so moving between them needs no new request.
+  The dashboard's cards, shared by /dashboard (all of them; on phones only the banks) and the phone pages /goals,
+  /spending, /deals and /activity (one each). Every page reads the same /dashboard response, so moving between them
+  needs no new request.
 */
 
 export type Dashboard = {

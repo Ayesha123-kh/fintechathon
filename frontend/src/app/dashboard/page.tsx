@@ -126,15 +126,16 @@ function DashboardView({ d }: { d: Dashboard }) {
       )}
 
       {/*
-        One grid for the rest, in reading order. Phones: one column. Tablets: goals full width, then pairs.
-        Wide laptops (12 columns, `wide:` = 1380px+): goals + spending, then banks, deals and activity side by side.
+        One grid for the rest, in reading order. Phones: only the banks here; goals, spending, deals and activity each
+        have their own page in the bottom bar. Tablets: goals full width, then pairs. Wide laptops (12 columns,
+        `wide:` = 1380px+): goals + spending, then banks, deals and activity side by side.
       */}
       <div className="grid gap-4 sm:gap-5 md:grid-cols-2 wide:grid-cols-12">
-        <GoalsCard id="goals" goals={d.goals} />
-        <SpendingCard id="spending" d={d} />
+        <GoalsCard id="goals" goals={d.goals} className="max-sm:hidden" />
+        <SpendingCard id="spending" d={d} className="max-sm:hidden" />
         <BanksCard id="banks" d={d} />
-        <DealsCard id="deals" d={d} />
-        <ActivityCard d={d} />
+        <DealsCard id="deals" d={d} className="max-sm:hidden" />
+        <ActivityCard d={d} className="max-sm:hidden" />
       </div>
     </div>
   );
