@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560" font-family="Helvetica,Arial,sans-serif"><title>Paisav system architecture</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560" font-family="Helvetica,Arial,sans-serif"><title>Paisave system architecture</title>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#16423C"/></marker></defs>
 <rect width="900" height="560" fill="#F7F0E5"/>
 <rect x="20" y="15" width="860" height="60" rx="10" fill="#F2B49B" stroke="#16423C" stroke-width="1.5"/>

@@ -1,12 +1,12 @@
 ---
-title: "Paisav: a private, chat-first AI savings agent"
+title: "Paisave: a private, chat-first AI savings agent"
 subtitle: "Technical Documentation: 2026 FinTechathon International Track, Topic A (Personal Finance Assistant)"
 author: "Team ACE 2.0"
 ---
 
 # 1. Summary
 
-**Paisav** is an AI agent that acts as a personal finance assistant for people in Pakistan. A user talks to it, in English or Roman Urdu and by text or voice. It learns their banks, cards, income and saving goals through conversation. It then reads their bank-alert emails and turns them into categorised spending. It works out how much they can save, finds the card discounts they can use at the places they actually spend, and credits every discount they use to a saving goal. It messages them first when something matters, including when the app is closed.
+**Paisave** is an AI agent that acts as a personal finance assistant for people in Pakistan. A user talks to it, in English or Roman Urdu and by text or voice. It learns their banks, cards, income and saving goals through conversation. It then reads their bank-alert emails and turns them into categorised spending. It works out how much they can save, finds the card discounts they can use at the places they actually spend, and credits every discount they use to a saving goal. It messages them first when something matters, including when the app is closed.
 
 **Track and topic.** International Track, **Topic A: Personal Finance Assistant** ("smart budgeting, bill analysis, spending insights, actionable recommendations based on the user's income and expenses").
 
@@ -40,7 +40,7 @@ We chose Pakistan on purpose. It is a large market where the standard fintech as
 
 Illustrative personas, not interview subjects.
 
-| Persona | Situation | What Paisav does for them |
+| Persona | Situation | What Paisave does for them |
 |---|---|---|
 | **Hina, 27, salaried in Karachi** | Salary Rs. 100,000, two bank accounts and a wallet, wants a car in 12 months, never budgets. | Turns the salary credit into goal contributions, shows a realistic monthly amount, nudges when a day is overspent. |
 | **Bilal, 22, final-year student** | Pocket money and part-time income, Visa debit card, loves eating out. | Finds card-matched food deals and credits each saving to his laptop fund. |
@@ -197,27 +197,27 @@ This is a **non-on-chain topic**, so evidence is simulated-account and sandbox o
 
 ## 8.1 Is the product complete?
 
-Paisav is a full product, not a prototype of one feature. Every layer exists and runs end to end in the developer stack: sign-up with OTP, sign-in, password reset, onboarding by chat, bank and card catalogue, Gmail ingestion, categorisation, goals and savings splits, deal crawling and matching, automatic redemption, push notifications, voice, an admin console, row-level security, an idle lock with passkeys, migrations, tests, Docker Compose and a Railway deployment guide. The remaining work is *validation at scale* (model quality measurement and a full scheduled cycle on the production model), which we list openly in section 5.4 and the roadmap.
+Paisave is a full product, not a prototype of one feature. Every layer exists and runs end to end in the developer stack: sign-up with OTP, sign-in, password reset, onboarding by chat, bank and card catalogue, Gmail ingestion, categorisation, goals and savings splits, deal crawling and matching, automatic redemption, push notifications, voice, an admin console, row-level security, an idle lock with passkeys, migrations, tests, Docker Compose and a Railway deployment guide. The remaining work is *validation at scale* (model quality measurement and a full scheduled cycle on the production model), which we list openly in section 5.4 and the roadmap.
 
 ## 8.2 Who pays, and why
 
 | Revenue line | How it works | Why it fits |
 |---|---|---|
 | **Merchant- and bank-funded offers** | Banks and merchants pay to have a deal listed and surfaced to users whose card and habits match. Sponsored deals are labelled, and ranking is by user benefit, not by bid. | Banks already spend on card promotions and have no way to measure which users actually redeemed. Our automatic redemption detection gives them a conversion metric. |
-| **B2B2C distribution** | Banks, wallets and employers offer Paisav to customers or staff as a savings feature, white-labelled. | Employers and banks want financial-wellbeing features without building them. |
+| **B2B2C distribution** | Banks, wallets and employers offer Paisave to customers or staff as a savings feature, white-labelled. | Employers and banks want financial-wellbeing features without building them. |
 | **Premium plan** | Free core (budget, goals, deals). Paid tier for more goals, more connected inboxes, family sharing and the investment board. The schema (`plans`, `subscriptions`, `payments`) is already in place. | Keeps the core useful for the large low-income segment while capturing willingness to pay in the upper segment. |
 
 We have not yet run a paid pilot, so these are hypotheses with a clear first test: a pilot with one bank's card promotions and measured redemptions.
 
 ## 8.3 How it compares
 
-| Category | What they do | The gap Paisav fills |
+| Category | What they do | The gap Paisave fills |
 |---|---|---|
 | Manual expense trackers | The user types every expense | Nothing is typed: bank alerts and chat do the work |
-| Single-bank apps | Show one bank's accounts | Paisav combines banks and wallets in one view and one plan |
-| Global aggregators | Depend on open-banking APIs | Not available in Pakistan; Paisav works from alert emails |
-| Deal listing sites | Static lists of offers | Paisav matches offers to the user's own card and credits the saving |
-| Generic chatbots | Talk about money | Paisav acts: it writes goals, splits money, records deals, with limits and an audit trail |
+| Single-bank apps | Show one bank's accounts | Paisave combines banks and wallets in one view and one plan |
+| Global aggregators | Depend on open-banking APIs | Not available in Pakistan; Paisave works from alert emails |
+| Deal listing sites | Static lists of offers | Paisave matches offers to the user's own card and credits the saving |
+| Generic chatbots | Talk about money | Paisave acts: it writes goals, splits money, records deals, with limits and an audit trail |
 
 ## 8.4 Go-to-market
 

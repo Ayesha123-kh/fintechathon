@@ -96,7 +96,7 @@ export function Logo({ size = 40, withName = true, tone = "peach", nameClassName
           tone === "peach" ? "bg-primary text-forest" : "bg-forest text-primary")}>
         <Sprout style={{ width: size * 0.5, height: size * 0.5 }} strokeWidth={2.25} />
       </span>
-      {withName && <span className={clsx("text-2xl font-bold tracking-tight", nameClassName ?? "text-ink")}>Paisav</span>}
+      {withName && <span className={clsx("text-2xl font-bold tracking-tight", nameClassName ?? "text-ink")}>Paisave</span>}
     </span>
   );
 }

@@ -115,7 +115,7 @@ export function Sidebar() {
   const friday = new Date().getDay() === 5;
   return (
     <aside className="sticky top-5 hidden h-[calc(100dvh-2.5rem)] w-60 shrink-0 flex-col rounded-[2rem] bg-side p-5 lg:flex xl:w-64">
-      <Link href="/dashboard" aria-label="Paisav home" className="mb-8 px-2 pt-2">
+      <Link href="/dashboard" aria-label="Paisave home" className="mb-8 px-2 pt-2">
         <Logo size={44} nameClassName="text-forest-ink" />
       </Link>
       <nav aria-label="Dashboard sections">
