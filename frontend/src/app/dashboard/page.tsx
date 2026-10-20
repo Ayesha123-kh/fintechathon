@@ -60,12 +60,12 @@ function DashboardView({ d }: { d: Dashboard }) {
       )}
 
       {/* Row 1: balance, then "saved this month" and "saved with deals" this month (beside it from tablets up, below it on phones). */}
-      <section id="home" data-section className="grid gap-4 sm:gap-5 md:grid-cols-[2fr_1fr] xl:grid-cols-[1.85fr_1fr]">
+      <section id="home" data-section className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-[2fr_1fr] xl:grid-cols-[1.85fr_1fr]">
         <div className="flex flex-col justify-between gap-6 rounded-[2rem] bg-forest p-6 text-forest-ink sm:p-8 lg:p-9">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[15px] text-forest-muted sm:text-lg">Total balance</p>
-              <p className="tabular mt-1 text-[2.5rem] leading-none font-bold tracking-tight whitespace-nowrap sm:mt-2 sm:text-5xl xl:text-7xl">
+              <p className="tabular mt-1 text-[clamp(1.75rem,10vw,2.5rem)] leading-none font-bold tracking-tight whitespace-nowrap sm:mt-2 sm:text-5xl xl:text-7xl">
                 {rs(d.total_balance)}
               </p>
             </div>
@@ -87,13 +87,13 @@ function DashboardView({ d }: { d: Dashboard }) {
               <dt className="flex items-center gap-2 text-sm text-forest-muted sm:text-base">
                 <span className="size-2.5 rounded-full bg-primary sm:size-3" aria-hidden />Savings
               </dt>
-              <dd className="tabular mt-1 text-lg font-bold whitespace-nowrap sm:text-2xl">{rs(d.total_savings)}</dd>
+              <dd className="tabular mt-1 text-[clamp(0.95rem,4.6vw,1.125rem)] font-bold whitespace-nowrap sm:text-2xl">{rs(d.total_savings)}</dd>
             </div>
             <div className="rounded-2xl bg-forest-2 px-4 py-3.5 sm:px-5 sm:py-4">
               <dt className="flex items-center gap-2 text-sm text-forest-muted sm:text-base">
                 <span className="size-2.5 rounded-full border-[1.5px] border-forest-muted sm:size-3" aria-hidden />Spendable
               </dt>
-              <dd className="tabular mt-1 text-lg font-bold whitespace-nowrap sm:text-2xl">{rs(d.expendable)}</dd>
+              <dd className="tabular mt-1 text-[clamp(0.95rem,4.6vw,1.125rem)] font-bold whitespace-nowrap sm:text-2xl">{rs(d.expendable)}</dd>
             </div>
           </dl>
         </div>
@@ -101,14 +101,14 @@ function DashboardView({ d }: { d: Dashboard }) {
         <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-1">
           <div className="flex flex-col justify-center rounded-[2rem] bg-primary p-5 text-primary-ink sm:p-7">
             <p className="text-sm font-semibold sm:text-base">Saved this month</p>
-            <p className="tabular mt-1 text-2xl font-bold tracking-tight whitespace-nowrap sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.saved_this_month)}</p>
+            <p className="tabular mt-1 text-[clamp(1.125rem,6vw,1.5rem)] font-bold tracking-tight whitespace-nowrap sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.saved_this_month)}</p>
             <p className="mt-1 text-xs sm:mt-2 sm:text-base">
               {Number(d.saved_this_month) > 0 ? <>Great going<span className="max-xl:hidden">, keep it up</span>!</> : "Your next salary starts it off."}
             </p>
           </div>
           <div className="flex flex-col justify-center rounded-[2rem] bg-surface p-5 sm:p-7">
             <p className="text-sm text-muted sm:text-base">Saved with deals</p>
-            <p className="tabular mt-1 text-2xl font-bold tracking-tight whitespace-nowrap text-ink sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.deal_savings_this_month)}</p>
+            <p className="tabular mt-1 text-[clamp(1.125rem,6vw,1.5rem)] font-bold tracking-tight whitespace-nowrap text-ink sm:mt-2 sm:text-3xl xl:text-[2.6rem]">{rs(d.deal_savings_this_month)}</p>
             <p className="mt-1 text-xs text-muted sm:mt-2 sm:text-base">From card discounts this month</p>
           </div>
         </div>
@@ -130,7 +130,7 @@ function DashboardView({ d }: { d: Dashboard }) {
         have their own page in the bottom bar. Tablets: goals full width, then pairs. Wide laptops (12 columns,
         `wide:` = 1380px+): goals + spending, then banks, deals and activity side by side.
       */}
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 wide:grid-cols-12">
+      <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 wide:grid-cols-12">
         <GoalsCard id="goals" goals={d.goals} className="max-sm:hidden" />
         <SpendingCard id="spending" d={d} className="max-sm:hidden" />
         <BanksCard id="banks" d={d} />

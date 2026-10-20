@@ -176,9 +176,9 @@ export function GoalsCard({ goals, id, className, showAll = false }: { goals: Da
           body="Tell your assistant what you're saving for, like “a car in 6 months”."
           action={<Link href="?chat=1" className="mt-2 text-sm font-semibold text-forest dark:text-primary">Add a goal in chat</Link>} />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           {shown.map((g) => (
-            <li key={g.id}>
+            <li key={g.id} className="min-w-0">
               <Link href={`/goals/${g.id}`}
                 className="flex h-full items-center gap-4 rounded-[1.25rem] bg-surface-2 p-4 transition hover:brightness-[0.98] sm:flex-col sm:items-start sm:gap-0 sm:p-5">
                 <span className="sm:hidden">
@@ -198,7 +198,7 @@ export function GoalsCard({ goals, id, className, showAll = false }: { goals: Da
                     {g.deadline && g.status !== "completed" ? `by ${monthYear(g.deadline)}` : when(g)}
                   </span>
                 </span>
-                <span className="text-sm text-muted sm:hidden">{when(g)}</span>
+                <span className="shrink-0 text-sm whitespace-nowrap text-muted sm:hidden">{when(g)}</span>
               </Link>
             </li>
           ))}
