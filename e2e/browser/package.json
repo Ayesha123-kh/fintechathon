@@ -1,0 +1,9 @@
+{
+  "name": "saving-e2e-browser",
+  "private": true,
+  "description": "Headless-Chrome user journeys for the Saving app (see ../run_all.sh)",
+  "dependencies": {
+    "axe-core": "4.10.2",
+    "puppeteer-core": "23.11.1"
+  }
+}
