@@ -1,0 +1,7 @@
+venv/
+browser/node_modules/
+browser/package-lock.json
+results/
+shots/
+*.log
+__pycache__/
