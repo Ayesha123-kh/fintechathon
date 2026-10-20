@@ -1,16 +1,18 @@
 ---
-title: "Saving (Bachat): a private, chat-first AI savings agent"
+title: "Paisav: a private, chat-first AI savings agent"
 subtitle: "Technical Documentation: 2026 FinTechathon International Track, Topic A (Personal Finance Assistant)"
 author: "Team ACE 2.0"
 ---
 
 # 1. Summary
 
-**Saving** (working name *Bachat*, Urdu for "savings") is an AI agent that acts as a personal finance assistant for people in Pakistan. A user talks to it, in English or Roman Urdu and by text or voice. It learns their banks, cards, income and saving goals through conversation. It then reads their bank-alert emails and turns them into categorised spending. It works out how much they can save, finds the card discounts they can use at the places they actually spend, and credits every discount they use to a saving goal. It messages them first when something matters, including when the app is closed.
+**Paisav** is an AI agent that acts as a personal finance assistant for people in Pakistan. A user talks to it, in English or Roman Urdu and by text or voice. It learns their banks, cards, income and saving goals through conversation. It then reads their bank-alert emails and turns them into categorised spending. It works out how much they can save, finds the card discounts they can use at the places they actually spend, and credits every discount they use to a saving goal. It messages them first when something matters, including when the app is closed.
 
 **Track and topic.** International Track, **Topic A: Personal Finance Assistant** ("smart budgeting, bill analysis, spending insights, actionable recommendations based on the user's income and expenses").
 
 **Design position.** The agent is a financial *participant* that decides and acts inside the user's ledger: it creates goals, splits income between them, records transactions, offers deals and closes the loop when a deal is used. It has **no authority over real money**. It cannot initiate payments or transfers, and it holds read-only access to email. We chose this deliberately: the safest permission tier for a consumer finance agent is one where the worst possible mistake is a wrong number on a screen, not a wrong payment.
+
+**Team ACE 2.0.** Muhammad Osama Khan (Team Leader): architecture and all technical work. Ayesha Taimur (QA and Project Manager): test planning, quality assurance, delivery and submission. Both are students in Pakistan.
 
 # 2. Problem and target user
 
