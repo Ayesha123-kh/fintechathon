@@ -53,7 +53,7 @@ from app.services.deals import deal_fingerprint
 from app.services.text import normalize_name
 
 revision: str = "0002"
-down_revision: str | None = "0001"
+down_revision: str | None = "0003"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

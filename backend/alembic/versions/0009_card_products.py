@@ -1,7 +1,7 @@
 """Catalog of the card products the supported banks issue (global reference data, filled at startup).
 
-Revision ID: 0007
-Revises: 0006
+Revision ID: 0014
+Revises: 0013
 """
 
 from collections.abc import Sequence
@@ -12,8 +12,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 from app.core.config import settings
 
-revision: str = "0007"
-down_revision: str | None = "0006"
+revision: str = "0009"
+down_revision: str | None = "0008"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
