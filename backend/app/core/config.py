@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_name: str = "Saving"
+    app_name: str = "Paisave"
     environment: str = "development"
     # Public URL of the web app (used in emails, OAuth redirects, WebAuthn origin).
     frontend_url: str = "http://localhost:3000"
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
 
     # WebAuthn
     webauthn_rp_id: str = "localhost"
-    webauthn_rp_name: str = "Saving"
+    webauthn_rp_name: str = "Paisave"
 
     # SMTP (Gmail)
     smtp_host: str = "smtp.gmail.com"

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" width="900" height="430" font-family="Helvetica,Arial,sans-serif"><title>Dashboard and chat wireframe</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#16423C"/></marker></defs>
+<rect width="900" height="430" fill="#F7F0E5"/>
+<rect x="20" y="15" width="250" height="400" rx="26" fill="#F7F0E5" stroke="#16423C" stroke-width="3"/>
+<text x="145.0" y="219.55" text-anchor="middle" font-size="13" font-weight="700" fill="#211913"></text>
+<text x="145" y="45" text-anchor="middle" font-size="14" font-weight="700" fill="#16423C">Home</text>
+<rect x="36" y="60" width="218" height="70" rx="10" fill="#F2B49B" stroke="#16423C" stroke-width="1.5"/>
+<text x="145.0" y="91.4" text-anchor="middle" font-size="14" font-weight="700" fill="#211913">Total Rs. 184,500</text>
+<text x="145.0" y="108.4" text-anchor="middle" font-size="12" font-weight="400" fill="#211913">Saved 62,000 · Spendable 122,500</text>
+<rect x="36" y="142" width="218" height="60" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="145.0" y="168.7" text-anchor="middle" font-size="12" font-weight="700" fill="#211913">Goal: Car  ▓▓▓▓░░░  38%</text>
+<text x="145.0" y="183.7" text-anchor="middle" font-size="10" font-weight="400" fill="#211913">Rs. 8,200 / month needed</text>
+<rect x="36" y="214" width="218" height="70" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="145.0" y="238.2" text-anchor="middle" font-size="12" font-weight="700" fill="#211913">This month&#x27;s spending</text>
+<text x="145.0" y="253.2" text-anchor="middle" font-size="10" font-weight="400" fill="#211913">Food 28% · Grocery 22% · Fuel 14%</text>
+<text x="145.0" y="268.2" text-anchor="middle" font-size="10" font-weight="400" fill="#211913">Bills 18% · Medicine 6% · Misc 12%</text>
+<rect x="36" y="296" width="218" height="52" rx="10" fill="#F2B49B" stroke="#16423C" stroke-width="1.5"/>
+<text x="145.0" y="318.7" text-anchor="middle" font-size="12" font-weight="700" fill="#211913">Deal saved this month</text>
+<text x="145.0" y="333.7" text-anchor="middle" font-size="10" font-weight="400" fill="#211913">Rs. 3,150 from 4 deals</text>
+<rect x="36" y="360" width="218" height="40" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="145.0" y="383.85" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">Home · Goals · Spending · Banks · Deals</text>
+<rect x="310" y="15" width="250" height="400" rx="26" fill="#F7F0E5" stroke="#16423C" stroke-width="3"/>
+<text x="435.0" y="219.55" text-anchor="middle" font-size="13" font-weight="700" fill="#211913"></text>
+<text x="435" y="45" text-anchor="middle" font-size="14" font-weight="700" fill="#16423C">Chat (voice or text)</text>
+<rect x="326" y="60" width="200" height="48" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="426.0" y="80.85" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">Paisave: Salary of Rs. 100,000</text>
+<text x="426.0" y="94.85" text-anchor="middle" font-size="9" font-weight="400" fill="#211913">arrived. 25% split to goals.</text>
+<rect x="344" y="118" width="200" height="38" rx="10" fill="#F2B49B" stroke="#16423C" stroke-width="1.5"/>
+<text x="444.0" y="140.85" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">You: Mujhe sasta khana chahiye</text>
+<rect x="326" y="166" width="215" height="70" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="433.5" y="190.85" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">Paisave: KFC 20% off with your</text>
+<text x="433.5" y="204.85" text-anchor="middle" font-size="9" font-weight="400" fill="#211913">Meezan Visa Gold, valid Fri–Sun,</text>
+<text x="433.5" y="218.85" text-anchor="middle" font-size="9" font-weight="400" fill="#211913">min spend Rs. 1,500. Offer saved.</text>
+<rect x="344" y="246" width="200" height="40" rx="10" fill="#F2B49B" stroke="#16423C" stroke-width="1.5"/>
+<text x="444.0" y="269.85" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">You: [voice note → editable text]</text>
+<rect x="326" y="296" width="215" height="52" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="433.5" y="318.85" text-anchor="middle" font-size="11" font-weight="400" fill="#211913">Paisave: Spend noticed at KFC.</text>
+<text x="433.5" y="332.85" text-anchor="middle" font-size="9" font-weight="400" fill="#211913">You saved about Rs. 400 → Car goal</text>
+<text x="600" y="60" text-anchor="start" font-size="13" font-weight="700" fill="#16423C">Screens in the product</text>
+<text x="600" y="90" text-anchor="start" font-size="12" font-weight="400" fill="#211913">• Sign up (OTP) · Sign in · Forgot password</text>
+<text x="600" y="118" text-anchor="start" font-size="12" font-weight="400" fill="#211913">• Dashboard: totals, banks, goals, spending</text>
+<text x="600" y="146" text-anchor="start" font-size="12" font-weight="400" fill="#211913">• Goal detail · Bank detail · Deals</text>
+<text x="600" y="174" text-anchor="start" font-size="12" font-weight="400" fill="#211913">• Email connection (read-only Gmail)</text>
+<text x="600" y="202" text-anchor="start" font-size="12" font-weight="400" fill="#211913">• Chat widget with live agent activity</text>
+<text x="600" y="230" text-anchor="start" font-size="12" font-weight="400" fill="#211913">• Admin: users, deals, cards, agents, plans</text>
+<text x="600" y="258" text-anchor="start" font-size="12" font-weight="400" fill="#211913">• PWA: install, offline page, push</text>
+<text x="600" y="286" text-anchor="start" font-size="12" font-weight="400" fill="#211913">• Idle lock + fingerprint / face unlock</text>
+<text x="600" y="330" text-anchor="start" font-size="11" font-weight="400" fill="#645949">Illustrative layout; numbers are example data.</text></svg>

@@ -33,7 +33,7 @@ AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me"
 SCOPES = "https://www.googleapis.com/auth/gmail.readonly openid email"
-TEST_ALERT_SUBJECT = "Saving test alert"
+TEST_ALERT_SUBJECT = "Paisave test alert"
 
 
 async def must_connect_first(s, user_id: uuid.UUID) -> bool:

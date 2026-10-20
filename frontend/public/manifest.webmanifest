@@ -1,6 +1,6 @@
 {
-  "name": "Saving — your savings assistant",
-  "short_name": "Saving",
+  "name": "Paisave — your savings assistant",
+  "short_name": "Paisave",
   "description": "A personal finance assistant that helps you save, find discounts and reach your goals.",
   "id": "/",
   "start_url": "/dashboard?source=pwa",

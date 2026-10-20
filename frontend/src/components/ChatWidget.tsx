@@ -396,7 +396,7 @@ export function ChatWidget({ onActivity }: { onActivity?: () => void }) {
                   status === "ready" ? "bg-[#3fb37f]" : status === "error" ? "bg-alert" : "bg-badge")} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-lg leading-tight font-bold text-ink">Your money team</p>
+                <p className="text-lg leading-tight font-bold text-ink">Paisave assistant</p>
                 <p className="truncate text-sm text-muted">
                   {waiting ? `${activity?.sender || MEMBERS.assistant.name} is ${activity?.state === "tool" ? "working" : "typing"}…`
                     : status === "ready" ? [...members.map((k) => MEMBERS[k].name), "You"].join(", ")
