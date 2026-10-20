@@ -15,6 +15,7 @@ from app.core.deps import require_internal
 from app.models import AgentRegistry, ChatMessage, ChatRoom, User, UserProfile, WatchCluster
 from app.services.notify import notify
 from app.services.omb import build_bulletin, room_member_key
+from app.services.text import assistant_failure_message
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/internal", tags=["internal"], dependencies=[Depends(require_internal)])
@@ -65,8 +66,7 @@ async def omb_events(events: list[OmbEvent]) -> dict:
         text = _KEY_LEAK.sub("•••", ev.message.text)
         if is_error:
             log.warning("assistant turn failed for %s: %s", user_id, text)
-            text = ("Your assistant couldn't reply just now (the AI service is unreachable). "
-                    "Please try again in a moment.")
+            text = assistant_failure_message(text)
         async with scoped_session(user_id, "user") as s:
             stmt = insert(ChatMessage).values(
                 user_id=user_id, omb_message_id=ev.message.id, role="system" if is_error else "bot",
