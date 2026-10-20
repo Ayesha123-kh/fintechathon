@@ -8,11 +8,32 @@ export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   return <div className={clsx("rounded-[var(--radius-card)] bg-surface p-5 sm:p-7", className)} {...props} />;
 }
 
+type ButtonVariant = "primary" | "forest" | "ghost" | "outline" | "danger" | "onDark";
+type ButtonSize = "sm" | "md" | "lg";
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "forest" | "ghost" | "outline" | "danger";
-  size?: "sm" | "md" | "lg";
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
 };
+
+/** The button look; links that act as buttons use it too. */
+export function buttonClass(variant: ButtonVariant = "primary", size: ButtonSize = "md", className?: string) {
+  return clsx(
+    "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest",
+    {
+      "bg-primary text-primary-ink hover:brightness-95": variant === "primary",
+      "bg-forest text-forest-ink hover:brightness-110": variant === "forest",
+      "bg-transparent text-ink hover:bg-hover": variant === "ghost",
+      "border border-line bg-surface text-ink hover:bg-hover": variant === "outline",
+      "bg-danger text-white hover:brightness-110": variant === "danger",
+      "border border-white/25 bg-transparent text-forest-ink hover:bg-white/10": variant === "onDark",
+      "h-9 px-4 text-sm": size === "sm",
+      "h-11 px-5 text-[15px]": size === "md",
+      "h-13 px-6 text-base": size === "lg",
+    },
+    className,
+  );
+}
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = "primary", size = "md", loading, className, children, disabled, ...props },
@@ -22,20 +43,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       disabled={disabled || loading}
-      className={clsx(
-        "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest",
-        {
-          "bg-primary text-primary-ink hover:brightness-95": variant === "primary",
-          "bg-forest text-forest-ink hover:brightness-110": variant === "forest",
-          "bg-transparent text-ink hover:bg-hover": variant === "ghost",
-          "border border-line bg-surface text-ink hover:bg-hover": variant === "outline",
-          "bg-danger text-white hover:brightness-110": variant === "danger",
-          "h-9 px-4 text-sm": size === "sm",
-          "h-11 px-5 text-[15px]": size === "md",
-          "h-13 px-6 text-base": size === "lg",
-        },
-        className,
-      )}
+      className={buttonClass(variant, size, className)}
       {...props}
     >
       {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}

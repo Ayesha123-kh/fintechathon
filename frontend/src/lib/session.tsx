@@ -93,11 +93,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (state.status === "loading") return;
     const isPublic = PUBLIC.some((p) => pathname.startsWith(p));
-    if (state.status === "none" && !isPublic) router.replace("/signin");
+    const isLanding = pathname === "/"; // the landing page is for everyone, signed in or not
+    if (state.status === "none" && !isPublic && !isLanding) router.replace("/signin");
     // Admins only have the admin dashboard; everyone else only has the user app.
     const home = state.user?.role === "admin" ? "/admin" : "/dashboard";
     if ((state.status === "active" || state.status === "locked") && isPublic) router.replace(home);
-    if (state.status === "active" && state.user) {
+    if (state.status === "active" && state.user && !isLanding) {
       const inAdmin = pathname.startsWith("/admin");
       if (state.user.role === "admin" && !inAdmin) router.replace("/admin");
       if (state.user.role !== "admin" && inAdmin) router.replace("/dashboard");

@@ -25,6 +25,27 @@ export function UserPhoto({ src, size = 32, className }: { src: string; size?: n
   );
 }
 
+/** "Osama Khan" -> "OK", "osama@x.pk" -> "OS". */
+export function initials(name: string): string {
+  const parts = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
+  const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? "?").slice(0, 2);
+  return letters.toUpperCase();
+}
+
+/** The signed-in person's photo if they set one, else their initials on deep green. */
+export function UserAvatar({ size = 44 }: { size?: number }) {
+  const { user } = useSession();
+  const { url } = useMyAvatar();
+  if (!user) return null;
+  if (url) return <UserPhoto src={url} size={size} />;
+  return (
+    <span aria-hidden style={{ width: size, height: size, fontSize: size * 0.36 }}
+      className="grid shrink-0 place-items-center rounded-full bg-forest font-bold tracking-wide text-forest-ink">
+      {initials(user.full_name || user.email)}
+    </span>
+  );
+}
+
 /** Settings: name and email, with a dotted circle to upload an optional profile photo (regular users only). */
 export function ProfileCard() {
   const { user } = useSession();

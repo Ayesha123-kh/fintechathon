@@ -11,7 +11,7 @@ import { passkeySupported, registerPasskey } from "@/lib/passkey";
 import { currentSubscription, disablePush, enablePush, pushSupported } from "@/lib/push";
 import { useSession } from "@/lib/session";
 import { applyTheme, getTheme, type ThemeChoice } from "@/lib/theme";
-import { ProfileCard } from "./Avatar";
+import { ProfileCard, initials } from "./Avatar";
 import { ChatWidget } from "./ChatWidget";
 import type { Dashboard } from "./dashboard/sections";
 import { EmailSettings } from "./EmailSettings";
@@ -339,12 +339,6 @@ function ThemePicker() {
       </div>
     </div>
   );
-}
-
-function initials(name: string): string {
-  const parts = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
-  const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? "?").slice(0, 2);
-  return letters.toUpperCase();
 }
 
 /** Phones: opens and closes the chat popup (ChatWidget), shows the unread count and turns into a cross while open. */
