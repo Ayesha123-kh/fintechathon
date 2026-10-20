@@ -116,9 +116,9 @@ Each use case names the actor, the trigger, what the agent does and the measurab
 1. Hina told the assistant in onboarding that she holds a *Meezan Visa Gold debit card* and spends at *KFC*.
 2. The crawler team had saved a deal: *KFC, 20% off, Fri to Sun, minimum Rs. 1,500, maximum discount Rs. 500, Meezan Visa cards*.
 3. On Friday the Deals Advisor tells her and calls `offer_deal`; the offer is recorded for her only.
-4. She pays Rs. 1,900 at KFC. Her bank emails a debit alert; the Gmail job parses it.
-5. `detect_redemption` confirms merchant, date window, weekday, card and minimum spend, then works out the saving from the amount actually debited and caps it at Rs. 500.
-6. The saving is added to her *Car* goal, the offer is closed so it cannot count twice, and she receives "Great, you just saved about Rs. 380."
+4. She pays Rs. 1,600 at KFC (the bank debits the price after the 20% discount, so the full bill was Rs. 2,000). Her bank emails a debit alert; the Gmail job parses it.
+5. `detect_redemption` confirms merchant, date window, weekday, card and minimum spend, then works out the saving from the amount actually debited (Rs. 1,600 ÷ 0.8 = Rs. 2,000 bill, so Rs. 400 saved) and caps it at Rs. 500.
+6. The saving is added to her *Car* goal, the offer is closed so it cannot count twice, and she receives "Great, you just saved about Rs. 400."
 
 # 5. Security and compliance (30% of the score)
 

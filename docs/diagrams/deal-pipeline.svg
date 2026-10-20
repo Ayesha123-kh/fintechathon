@@ -34,4 +34,4 @@
 <text x="34" y="278" text-anchor="start" font-size="12" font-weight="400" fill="#0D0D0D">✓  If a card is required: account is at the deal&#x27;s bank AND user owns a matching card</text>
 <text x="34" y="298" text-anchor="start" font-size="12" font-weight="400" fill="#0D0D0D">✓  Amount clears the deal&#x27;s minimum spend</text>
 <text x="34" y="318" text-anchor="start" font-size="12" font-weight="400" fill="#0D0D0D">✓  One redemption per offer, one per transaction (no double counting)</text>
-<text x="24" y="334" text-anchor="start" font-size="11" font-weight="400" fill="#444">Saving = amount actually debited × discount, capped at the deal&#x27;s maximum. Reported as &#x27;about Rs. X&#x27;. Credit-card deals stay manual.</text></svg>
+<text x="24" y="334" text-anchor="start" font-size="11" font-weight="400" fill="#444">The debit is assumed to be after the discount: bill = debit ÷ (1 − discount), saving = bill − debit, capped at the deal&#x27;s maximum. Shown as &#x27;about Rs. X&#x27;. Credit-card deals stay manual.</text></svg>
