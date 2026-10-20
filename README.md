@@ -129,8 +129,8 @@ To refresh it after changes, run graphify with `--update`: it re-extracts only t
   - [❌] Add the tunnel's callback URL to the Google OAuth client
 
 ## 6. Demo data (temporary migration `0002_demo_data`)
-- [x] Demo user "Osama": `DEMO_USER_EMAIL` (default `demo@bachat.pk`) / `demo12345`
-- [x] Demo admin: `admin@bachat.pk` / `admin12345`
+- [x] Demo user "Osama": `DEMO_USER_EMAIL` (default `paisave.demo@gmail.com`) / `demo12345`
+- [x] Demo admin: the bootstrap admin — `ADMIN_EMAIL` / `ADMIN_PASSWORD` from the root `.env`
 - [ ] To use a real Gmail for Osama:
   - [ ] Set `DEMO_USER_EMAIL` in the root `.env`
   - [ ] `docker compose up -d --force-recreate backend worker`

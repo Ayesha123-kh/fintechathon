@@ -2,8 +2,8 @@
 
 Accounts created:
   $DEMO_USER_EMAIL / demo12345   (user "Osama", onboarded, opted in to investments;
-                                  defaults to demo@bachat.pk; use a Gmail you own to connect its inbox)
-  admin@bachat.pk  / admin12345  (admin)
+                                  defaults to paisave.demo@gmail.com; use a Gmail you own to connect its inbox)
+  $ADMIN_EMAIL / $ADMIN_PASSWORD (admin; both come from the root .env)
 
 Remove it with:  alembic downgrade 0001
 Skipped automatically when ENVIRONMENT=production.
@@ -58,8 +58,10 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 DEMO_USER = settings.demo_user_email.lower()
-LEGACY_DEMO_USER = "demo@bachat.pk"
-DEMO_ADMIN = "admin@bachat.pk"
+LEGACY_DEMO_USER = "paisave.demo@gmail.com"
+# The demo admin is the bootstrap admin: same .env login, so nothing is hard-coded here.
+DEMO_ADMIN = settings.admin_email.lower()
+DEMO_ADMIN_PASSWORD = settings.admin_password
 DEMO_TAG = "[demo]"
 DEMO_BOT = "demo-seed"
 
@@ -108,7 +110,9 @@ def upgrade() -> None:
     # ------------------------------------------------------------------ users
     user = User(email=DEMO_USER, password_hash=hash_password("demo12345"), full_name="Osama",
                 role="user", email_verified=True, onboarding_completed=True, last_login_at=now - timedelta(days=1))
-    admin = User(email=DEMO_ADMIN, password_hash=hash_password("admin12345"), full_name="Bachat Admin",
+    if not DEMO_ADMIN or not DEMO_ADMIN_PASSWORD:
+        raise ValueError("Set ADMIN_EMAIL and ADMIN_PASSWORD in the root .env before applying 0002_demo_data")
+    admin = User(email=DEMO_ADMIN, password_hash=hash_password(DEMO_ADMIN_PASSWORD), full_name="Paisave Admin",
                  role="admin", email_verified=True, onboarding_completed=True)
     s.add_all([user, admin])
     s.flush()
