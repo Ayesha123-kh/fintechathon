@@ -1,5 +1,6 @@
 import clsx from "clsx";
-import { BadgePercent, type LucideIcon, PiggyBank, Sprout, TrendingUp, Wallet } from "lucide-react";
+import { BadgePercent, PiggyBank, TrendingUp, Wallet } from "lucide-react";
+import { PotMark } from "./ui";
 
 /*
   Who can post in a person's chat, each with their own avatar and name colour, like a WhatsApp group: their four
@@ -11,8 +12,13 @@ export const MEMBERS = {
   savings: { name: "Savings Coach", icon: PiggyBank, avatar: "bg-cat-2 text-white", nameColor: "text-[#2f6b5c] dark:text-cat-3" },
   deals: { name: "Deals Advisor", icon: BadgePercent, avatar: "bg-deal text-white", nameColor: "text-[#a8432c] dark:text-alert" },
   investment: { name: "Investment Advisor", icon: TrendingUp, avatar: "bg-[#5b5f97] text-white", nameColor: "text-[#4b4f86] dark:text-[#b4b7e6]" },
-  app: { name: "Saving", icon: Sprout, avatar: "bg-primary text-forest", nameColor: "text-forest dark:text-primary" },
-} satisfies Record<string, { name: string; icon: LucideIcon; avatar: string; nameColor: string }>;
+  app: { name: "Paisave", icon: AppMark, avatar: "bg-forest text-primary", nameColor: "text-forest dark:text-primary" },
+} satisfies Record<string, { name: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; avatar: string; nameColor: string }>;
+
+/** The app's own avatar: the gullak mark in the app icon's colours. */
+function AppMark({ className }: { className?: string }) {
+  return <PotMark className={clsx(className, "scale-125")} />;
+}
 
 export type MemberKey = keyof typeof MEMBERS;
 const ADVISORS = (Object.keys(MEMBERS) as MemberKey[]).filter((k) => k !== "app");

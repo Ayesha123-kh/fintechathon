@@ -612,7 +612,7 @@ function Row({ side, who = "assistant", avatar, photo, children }: {
 }) {
   if (side === "right") {
     // No profile photo: your bubbles as always. With one, it sits beside the last bubble of each run of your
-    // messages (like the assistant's sprout), and a spacer keeps the others aligned.
+    // messages (like the assistant's avatar), and a spacer keeps the others aligned.
     if (photo === undefined) return <div className="flex justify-end pl-12 sm:pl-16">{children}</div>;
     return (
       <div className="flex items-end justify-end gap-2 pl-12 sm:pl-16">
