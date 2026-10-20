@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" width="900" height="430" font-family="Helvetica,Arial,sans-serif"><title>Paisav user journey loop</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#16423C"/></marker></defs>
+<rect width="900" height="430" fill="#F7F0E5"/>
+<rect x="20" y="30" width="260" height="110" rx="10" fill="#F2B49B" stroke="#16423C" stroke-width="1.5"/>
+<text x="150.0" y="72.25" text-anchor="middle" font-size="15" font-weight="700" fill="#211913">1 Onboard</text>
+<text x="150.0" y="90.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">chat only, no forms</text>
+<text x="150.0" y="108.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">banks · cards · income · goals</text>
+<rect x="315" y="30" width="260" height="110" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="445.0" y="72.25" text-anchor="middle" font-size="15" font-weight="700" fill="#211913">2 Connect</text>
+<text x="445.0" y="90.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">read-only Gmail</text>
+<text x="445.0" y="108.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">bank alerts → transactions</text>
+<rect x="610" y="30" width="260" height="110" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="740.0" y="72.25" text-anchor="middle" font-size="15" font-weight="700" fill="#211913">3 Understand</text>
+<text x="740.0" y="90.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">categorise spending</text>
+<text x="740.0" y="108.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">fuel · food · grocery · bills</text>
+<rect x="610" y="215" width="260" height="110" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="740.0" y="257.25" text-anchor="middle" font-size="15" font-weight="700" fill="#211913">4 Plan</text>
+<text x="740.0" y="275.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">split income to goals</text>
+<text x="740.0" y="293.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">by deadline, weight or rule</text>
+<rect x="315" y="215" width="260" height="110" rx="10" fill="#ECE4D2" stroke="#16423C" stroke-width="1.5"/>
+<text x="445.0" y="257.25" text-anchor="middle" font-size="15" font-weight="700" fill="#211913">5 Act</text>
+<text x="445.0" y="275.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">offer card-matched deals</text>
+<text x="445.0" y="293.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">at places they already spend</text>
+<rect x="20" y="215" width="260" height="110" rx="10" fill="#F2B49B" stroke="#16423C" stroke-width="1.5"/>
+<text x="150.0" y="257.25" text-anchor="middle" font-size="15" font-weight="700" fill="#211913">6 Credit</text>
+<text x="150.0" y="275.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">deal use auto-detected</text>
+<text x="150.0" y="293.25" text-anchor="middle" font-size="13" font-weight="400" fill="#211913">saving moves to the goal</text>
+<line x1="280" y1="85" x2="315" y2="85" stroke="#16423C" stroke-width="1.8" marker-end="url(#a)"/>
+<line x1="575" y1="85" x2="610" y2="85" stroke="#16423C" stroke-width="1.8" marker-end="url(#a)"/>
+<line x1="750" y1="140" x2="750" y2="215" stroke="#16423C" stroke-width="1.8" marker-end="url(#a)"/>
+<line x1="610" y1="270" x2="575" y2="270" stroke="#16423C" stroke-width="1.8" marker-end="url(#a)"/>
+<line x1="315" y1="270" x2="280" y2="270" stroke="#16423C" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="20" y="355" width="860" height="60" rx="10" fill="#F7F0E5" stroke="#16423C" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="450.0" y="389.2" text-anchor="middle" font-size="12" font-weight="400" fill="#211913">7 Nudge and adapt: weekly &#x27;you saved Rs. X&#x27;, overspend alert, month-end sweep, sadqah reminder. User says &#x27;I got a raise&#x27; → facts update → advice changes → back to step 3.</text>
+<line x1="150" y1="325" x2="150" y2="355" stroke="#16423C" stroke-width="1.8" marker-end="url(#a)" stroke-dasharray="5 4"/></svg>
