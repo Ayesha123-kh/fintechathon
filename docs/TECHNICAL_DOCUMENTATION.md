@@ -22,6 +22,31 @@ Existing budgeting apps assume a US-style open-banking API, manual entry, or a f
 
 Our user is a salaried or self-employed person with a phone as the main device, who wants to save toward concrete goals ("a car in 6 months on Rs. 100,000 a month") without becoming a spreadsheet user.
 
+## 2.1 Why Pakistan, and why it is a commercial opportunity
+
+We chose Pakistan on purpose. It is a large market where the standard fintech assumptions fail, which is exactly where an AI agent has to do real work instead of calling a clean API.
+
+- **Digital money is arriving fast, but unevenly.** Karandaaz's 2024 survey puts access to digital financial services at 35% of adults, up from 7% in 2014, and the central bank targets 75% account ownership by 2028 (sources [1], [2]). Sources disagree on exact account-ownership figures because of different definitions, so we quote them as direction, not as a precise market size.
+- **Instant payments are mainstream.** Raast, the national instant-payment rail, processed 496 million transactions in FY2024, up from 147 million in FY2023 [3]. Users now move money constantly but have no tool that explains where it goes.
+- **Remittances put money in family hands.** Pakistan received a record $38.3 billion in remittances in FY2025 [4]. Households that receive and then divide this money for rent, school fees and goals are a natural user group.
+- **Phones are the channel.** About 116 million people were online in early 2025 [5].
+- **There is no open-banking layer to build on.** What every bank does send, reliably, is a transaction alert by email or SMS. Using that as the data source makes the product work today, with no bank partnership needed for version one.
+- **Discounts are everywhere but unusable.** Banks run card-specific merchant promotions, scattered across websites and social pages. Nobody matches them to the card in your wallet.
+- **Local fit that global apps do not have.** Roman Urdu and voice, Islamic-finance awareness (riba-free options, sadqah), PSX and gold as normal savings vehicles, and a catalogue of local banks, wallets and cards.
+
+**Is a single-country focus a weakness?** We treat it as a *beachhead with a repeatable playbook*. The pattern (read alert emails, validate against a local card catalogue, match local offers, credit savings) transfers to other markets where banks notify by email or SMS instead of exposing open APIs. We list that as a hypothesis in the roadmap, not as proven. The honest trade-off is lower revenue per user than in rich markets, which is why the business model (section 8) relies on volume, merchant-funded offers and B2B2C distribution rather than subscriptions alone.
+
+## 2.2 Personas
+
+Illustrative personas, not interview subjects.
+
+| Persona | Situation | What Paisav does for them |
+|---|---|---|
+| **Hina, 27, salaried in Karachi** | Salary Rs. 100,000, two bank accounts and a wallet, wants a car in 12 months, never budgets. | Turns the salary credit into goal contributions, shows a realistic monthly amount, nudges when a day is overspent. |
+| **Bilal, 22, final-year student** | Pocket money and part-time income, Visa debit card, loves eating out. | Finds card-matched food deals and credits each saving to his laptop fund. |
+| **Mr. and Mrs. Qureshi, 45, family household** | Rent, school fees, remittance from a relative abroad, prefer riba-free products. | Splits income across fees, emergency fund and Hajj goal; sadqah reminders; Roman Urdu or Urdu chat. |
+| **Admin / operator** | Runs the service. | Manages deals, cards, agents and users from a separate admin dashboard with an audit trail. |
+
 # 3. What the agent does (task completion)
 
 | Capability | What happens | Where in the code |
@@ -38,28 +63,15 @@ Our user is a salaried or self-employed person with a phone as the main device, 
 | **Voice** | Voice notes are transcribed to editable text in English or Roman Urdu (Urdu script on request). | `core/llm.py`, `frontend/src/lib/wav.ts` |
 | **Optional investment board** | Opt-in only, behind a disclaimer the user must accept. Five desks (gold and silver, PSX, foreign stocks, crypto, Pakistani real estate) publish signals and research; the per-user Investment Advisor explains them. | `ai-ml/prompts/*_{researcher,analyst,watcher}` |
 
+![Figure 1. The user journey as a loop: onboard, connect, understand, plan, act, credit, then nudge and adapt.](diagrams/journey.svg)
+
+![Figure 2. How a discount becomes a credited saving, and the six checks plain code runs before any money is moved in the ledger.](diagrams/deal-pipeline.svg)
+
+![Figure 3. Product layout (illustrative): dashboard on the left, chat with voice and deal capture in the middle.](diagrams/wireframe.svg)
+
 # 4. System architecture
 
-```
- Phone / desktop (PWA, Next.js + Tailwind)  ── chat popup, dashboard, goals, banks
-        │  HTTPS, cookie + JWT, SSE stream, Web Push
-        ▼
- ┌───────────────────────────── Backend (FastAPI) ─────────────────────────────┐
- │ REST API (auth, finance, chat, admin)   MCP server "fin_user" (user tools)  │
- │ Gmail ingestion   deal detection        MCP server "fin_market" (public)    │
- └───────┬───────────────────────┬──────────────────────────────┬──────────────┘
-         │ SQLAlchemy            │ cache / sessions / rate-limit │ internal API (shared key)
-         ▼                       ▼                               ▼
- PostgreSQL 17            Dragonfly (Redis API)      OpenMausBot (agent runtime) + gateway
- Row-Level Security       sessions, idle lock,       ├─ per-user team: Finance Assistant,
- on every user table      rate limits                │   Savings Coach, Deals Advisor,
-         ▲                                           │   (Investment Advisor, opt-in)
-         │                                           └─ shared desks: 29 bots (watchers,
- Worker (scheduler, Asia/Karachi)                         researchers, analysts, deal crawlers)
- 19 jobs: Gmail sync, nudges, screening
-                                                     LLM: Qwen3.5-9B (thinking), STT, decision
-                                                     model on vLLM, OpenAI-compatible endpoints
-```
+![Figure 4. System architecture. Private data stays on the self-hosted model; shared desks see public data only.](diagrams/architecture.svg)
 
 **Services** (Docker Compose for development, Railway for production, one `Dockerfile` per folder, one root `.env`):
 
@@ -83,6 +95,31 @@ Our user is a salaried or self-employed person with a phone as the main device, 
 
 User-owned tables: `users`, `user_profiles`, `bank_accounts`, `cards`, `goals`, `savings_ledger`, `transactions`, `deal_offers`, `deal_redemptions`, `user_facts`, `email_connections`, `chat_rooms`, `chat_messages`, `push_subscriptions`, `webauthn_credentials`, `notifications`. Shared reference tables: `banks`, `card_products`, `categories`, `merchants`, `deals`, `market_signals`, `research_notes`, `watch_clusters`, `plans` (the schema is ready for billing later). System tables: `agent_registry`, `audit_log`.
 
+# 4A. Use cases
+
+Each use case names the actor, the trigger, what the agent does and the measurable outcome. All of them run on the current build.
+
+| # | Use case | Trigger | What happens | Outcome |
+|---|---|---|---|---|
+| UC1 | **Onboard by conversation** | New user signs up with an emailed OTP | The Finance Assistant asks one topic per message: banks, exact cards, income and pay day, goals, savings rule, sadqah and optional investing. Answers can come in any order and in Roman Urdu; the language is detected, never asked. A card is saved only if it exists in the 163-card catalogue; a near miss returns "Did you mean the Meezan Mastercard Classic Debit Card?" | A complete profile with no forms. Only the card type is stored, never digits. |
+| UC2 | **Salary arrives, savings split itself** | Salary credit alert in Gmail, or "salary aa gayi" in chat | The credit is recorded, the savings rule (percentage, fixed amount or leftover) is applied and the amount is divided across goals by deadline, weight or equal split. Capped goals pass overflow on; the total is conserved. | Rs. 25,000 of a Rs. 100,000 salary at a 25% rule lands in the right goals within minutes and the user gets one summary message. |
+| UC3 | **"Where did my money go?"** | User asks, or opens the dashboard | Debit alerts are categorised (food, grocery, fuel, medicine, bills, transfers). The Savings Coach explains the month in plain language and flags the biggest category against the budget. | Spending by category and by bank, with one concrete tip. |
+| UC4 | **Find and use a discount** | "Mujhe sasta khana chahiye" or a proactive suggestion | The Deals Advisor reads the user's cards and favourite merchants, finds valid deals, explains the conditions (days, minimum spend, cap) and records an offer. Later, a matching debit alert is detected by plain code and the saving is credited to a goal. | A measurable rupee saving per deal, with no manual entry. |
+| UC5 | **Life changes, plan adapts** | "I got an increment" / "I closed my HBL card" | The agent updates the structured data and stores a fact that supersedes the old one. Future splits and deal suggestions change. | Advice stays current without re-onboarding. |
+| UC6 | **Overspend nudge and weekly review** | Day's spend exceeds 1.8x the daily budget; Friday evening; Sunday check-in | Push notification even with the app closed: a gentle alert, "You saved Rs. X this week", or one tip, one relevant deal and at most one question. | Behaviour change through small, timely messages. |
+| UC7 | **Voice note in Roman Urdu** | User taps the mic | Speech is transcribed to editable text in English or Roman Urdu (Urdu script on request), the user fixes any word, then sends. | Usable by people who find typing in Urdu hard. |
+| UC8 | **Optional: understand an investment signal** | User opts in after reading a disclaimer | The Investment Advisor explains signals and research from the five desks (gold and silver, PSX, foreign stocks, crypto, real estate) and always repeats the disclaimer. It gives no guarantees. | Plain-language market context, never a trade. |
+| UC9 | **Operator keeps the catalogue healthy** | Daily | The admin reviews deals, cards, agents and users; expired or duplicate deals are cleaned automatically; every admin action is logged. | A trustworthy deal and card database. |
+
+## Worked example (UC4, end to end)
+
+1. Hina told the assistant in onboarding that she holds a *Meezan Visa Gold debit card* and spends at *KFC*.
+2. The crawler team had saved a deal: *KFC, 20% off, Fri to Sun, minimum Rs. 1,500, maximum discount Rs. 500, Meezan Visa cards*.
+3. On Friday the Deals Advisor tells her and calls `offer_deal`; the offer is recorded for her only.
+4. She pays Rs. 1,900 at KFC. Her bank emails a debit alert; the Gmail job parses it.
+5. `detect_redemption` confirms merchant, date window, weekday, card and minimum spend, then works out the saving from the amount actually debited and caps it at Rs. 500.
+6. The saving is added to her *Car* goal, the offer is closed so it cannot count twice, and she receives "Great, you just saved about Rs. 380."
+
 # 5. Security and compliance (30% of the score)
 
 ## 5.1 Permission tiers
@@ -97,6 +134,8 @@ User-owned tables: `users`, `user_profiles`, `bank_accounts`, `cards`, `goals`, 
 | **T5: system** | Worker and gateway | Background jobs, migrations | Reachable from outside; authenticated with a shared internal key |
 
 **No tier can initiate a payment, transfer or any write to a bank.** The only "move to savings" is a ledger entry in our own database. The only external credential held for a user is a read-only Gmail token.
+
+![Figure 5. Trust zones: user agents, shared desks and admin are separated, with database row-level security and a fail-closed merchant screen between them.](diagrams/security.svg)
 
 ## 5.2 Controls
 
@@ -126,7 +165,7 @@ We list these openly because the Security self-assessment asks for them.
 |---|---|---|
 | 1 | **Prompt injection** through email text or merchant names could try to steer an agent. | Agents can only call a small typed tool set scoped to one user; no payment tool exists; money rules live in code. Residual risk: it could push wrong ledger entries for that user. Planned: confirmation step for large manual entries. |
 | 2 | **Member key in a prompt.** A key shown to an LLM could in theory be repeated in chat. | Keys identify only the user's own room and are never shown to the user by instruction; the room is the user's own. Planned: per-call signed tokens if the runtime adds caller identity. |
-| 3 | **Small-model reliability** (Qwen3.5-9B tool calling and onboarding quality) is not yet measured at scale. | Deterministic maths and validation in tools; evaluation set planned (see section 8). |
+| 3 | **Small-model reliability** (Qwen3.5-9B tool calling and onboarding quality) is not yet measured at scale. | Deterministic maths and validation in tools; evaluation set planned (see section 9). |
 | 4 | **Bank-alert parsing** covers known formats; others fall back to the LLM and could mis-parse. | Old alerts never override a stated balance; parse failures are logged; the user can correct by chat. |
 | 5 | **Deal detection** depends on merchant-name matching ("KFC" vs "KFC Pakistan") and assumes the debited amount is after discount. | Reported as "about Rs. X"; only offered deals are tracked; credit-card deals stay manual. |
 | 6 | **Scheduled desk runs** (watchers, researchers, crawlers) are verified to the trigger call but not yet over a full cycle with the production model. | Admin -> Agents shows status and last error per agent. |
@@ -154,7 +193,40 @@ This is a **non-on-chain topic**, so evidence is simulated-account and sandbox o
 - **Tests:** `cd backend && uv run pytest`. Covers goal-split conservation, capped-goal redistribution, deadline weighting, alert parsing, balance protection against stale alerts, card catalogue enforcement, deal-redemption rules and merchant screening.
 - **Evidence to attach:** (1) the onboarding chat transcript, (2) sandbox logs of a salary credit split into goals, a KFC / PSO spend categorised, and a deal offered then auto-detected as used, (3) the Admin -> Agents screen, (4) a Postgres session showing RLS denying cross-user reads, (5) the demo video.
 
-# 8. Roadmap before and after the final
+# 8. Product completeness, business model and go-to-market
+
+## 8.1 Is the product complete?
+
+Paisav is a full product, not a prototype of one feature. Every layer exists and runs end to end in the developer stack: sign-up with OTP, sign-in, password reset, onboarding by chat, bank and card catalogue, Gmail ingestion, categorisation, goals and savings splits, deal crawling and matching, automatic redemption, push notifications, voice, an admin console, row-level security, an idle lock with passkeys, migrations, tests, Docker Compose and a Railway deployment guide. The remaining work is *validation at scale* (model quality measurement and a full scheduled cycle on the production model), which we list openly in section 5.4 and the roadmap.
+
+## 8.2 Who pays, and why
+
+| Revenue line | How it works | Why it fits |
+|---|---|---|
+| **Merchant- and bank-funded offers** | Banks and merchants pay to have a deal listed and surfaced to users whose card and habits match. Sponsored deals are labelled, and ranking is by user benefit, not by bid. | Banks already spend on card promotions and have no way to measure which users actually redeemed. Our automatic redemption detection gives them a conversion metric. |
+| **B2B2C distribution** | Banks, wallets and employers offer Paisav to customers or staff as a savings feature, white-labelled. | Employers and banks want financial-wellbeing features without building them. |
+| **Premium plan** | Free core (budget, goals, deals). Paid tier for more goals, more connected inboxes, family sharing and the investment board. The schema (`plans`, `subscriptions`, `payments`) is already in place. | Keeps the core useful for the large low-income segment while capturing willingness to pay in the upper segment. |
+
+We have not yet run a paid pilot, so these are hypotheses with a clear first test: a pilot with one bank's card promotions and measured redemptions.
+
+## 8.3 How it compares
+
+| Category | What they do | The gap Paisav fills |
+|---|---|---|
+| Manual expense trackers | The user types every expense | Nothing is typed: bank alerts and chat do the work |
+| Single-bank apps | Show one bank's accounts | Paisav combines banks and wallets in one view and one plan |
+| Global aggregators | Depend on open-banking APIs | Not available in Pakistan; Paisav works from alert emails |
+| Deal listing sites | Static lists of offers | Paisav matches offers to the user's own card and credits the saving |
+| Generic chatbots | Talk about money | Paisav acts: it writes goals, splits money, records deals, with limits and an audit trail |
+
+## 8.4 Go-to-market
+
+1. **Beachhead:** salaried urban users with one or more banks and a wallet; students; young families. Grow through card-deal sharing and employer pilots.
+2. **First pilot:** one bank's cards plus a food and grocery merchant group, measure redemption and saved amount per user.
+3. **Trust first:** read-only email, no payment authority, plain-language privacy, optional investing behind a disclaimer. Regulatory review with a licensed partner before any advice product beyond education.
+4. **Expansion hypothesis:** other markets where banks notify by SMS or email rather than open APIs. Only the card catalogue, the alert parsers and the deal sources change per market.
+
+# 9. Roadmap before and after the final
 
 - Measure Qwen3.5-9B on a fixed evaluation set (onboarding completion, correct tool arguments, Roman Urdu quality); publish the scores.
 - Confirm a full scheduled cycle on the production model.
@@ -162,6 +234,17 @@ This is a **non-on-chain topic**, so evidence is simulated-account and sandbox o
 - Add more banks' alert formats; reduce LLM-parse fallbacks.
 - Billing (schema ready), shared goals for families, and Raast-based payments as a separate, explicit, user-approved permission tier. It is not enabled today.
 
-# 9. Technology stack
+# 10. Technology stack
 
 Python 3.12, FastAPI, SQLAlchemy and Alembic; PostgreSQL 17; Dragonfly (Redis API); Next.js with Tailwind (PWA, service worker, Web Push, WebAuthn); OpenMausBot as the agent runtime; Qwen3.5-9B (thinking), Qwen3-ASR and a decision model on vLLM / llama.cpp behind OpenAI-compatible endpoints; Docker Compose for development and Railway for production. Open-source components are used under their own licences.
+
+
+# References
+
+1. Karandaaz Pakistan, 2024 Financial Inclusion survey (access to digital financial services 35% of adults), as reported in [Nukta](https://nukta.com/pakistans-financial-inclusion-drive-picks-up-pace).
+2. State Bank of Pakistan, National Financial Inclusion Strategy 2024 to 2028 (target 75% account ownership by 2028), as reported by [The News](https://www.thenews.pk/print/1371561-pakistan-s-digital-revolution).
+3. Raast transaction volumes, FY2023 and FY2024, from [PBC, Built on Rails: The State of Fintech in Pakistan](https://www.pbc.org.pk/research/built-on-rails-the-state-of-fintech-in-pakistan/).
+4. State Bank of Pakistan, FY2025 workers' remittances of $38.3 billion, as reported by [Profit](https://profit.pakistantoday.com.pk/?p=204436).
+5. [DataReportal, Digital 2025: Pakistan](https://datareportal.com/reports/digital-2025-pakistan).
+
+Market figures come from different surveys and definitions and should be read as direction, not precision.
