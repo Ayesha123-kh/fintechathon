@@ -7,6 +7,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { BankModal } from "@/components/BankModal";
 import { CategoryStack, ProgressRing } from "@/components/charts";
+import { GoalIconGlyph } from "@/components/GoalIcon";
 import { Card, Empty } from "@/components/ui";
 import { fetcher, rs } from "@/lib/api";
 
@@ -183,17 +184,17 @@ export function GoalsCard({ goals, id, className, showAll = false }: { goals: Da
                 className="flex h-full items-center gap-4 rounded-[1.25rem] bg-surface-2 p-4 transition hover:brightness-[0.98] sm:flex-col sm:items-start sm:gap-0 sm:p-5">
                 <span className="sm:hidden">
                   <ProgressRing value={g.progress} size={56} thickness={6} label={`${g.name} progress`}>
-                    <span className="tabular text-sm font-bold text-ink">{Math.round(g.progress * 100)}%</span>
+                    <GoalIconGlyph name={g.icon} label={g.name} className="size-5" />
                   </ProgressRing>
                 </span>
                 <span className="hidden sm:block">
                   <ProgressRing value={g.progress} size={76} thickness={8} label={`${g.name}: ${Math.round(g.progress * 100)}% saved`}>
-                    <span />
+                    <GoalIconGlyph name={g.icon} label={g.name} className="size-8" />
                   </ProgressRing>
                 </span>
                 <span className="min-w-0 flex-1 sm:mt-5 sm:w-full">
                   <span className="line-clamp-2 block font-bold break-words text-ink sm:text-xl">{g.name}</span>
-                  <span className="tabular mt-0.5 block text-sm text-muted sm:mt-1.5 sm:text-base">Rs. {short(g.saved)} of {short(g.target)}</span>
+                  <span className="tabular mt-0.5 block text-sm text-muted sm:mt-1.5 sm:text-base">Rs. {short(g.saved)} of {short(g.target)} · {Math.round(g.progress * 100)}%</span>
                   <span className="mt-1 hidden text-sm text-muted sm:block">
                     {g.deadline && g.status !== "completed" ? `by ${monthYear(g.deadline)}` : when(g)}
                   </span>

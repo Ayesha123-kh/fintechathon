@@ -37,7 +37,7 @@ export default function GoalPage() {
             {/* Same deep-green card with a peach ring as the dashboard's balance card. */}
             <div className="rounded-[2rem] bg-forest p-6 text-forest-ink sm:p-8">
               <div className="flex items-center gap-4">
-                <GoalIcon name={g.icon} size="lg" />
+                <GoalIcon name={g.icon} label={g.name} size="lg" />
                 <div>
                   <h1 className="text-2xl font-bold sm:text-3xl">{g.name}</h1>
                   <p className="text-sm text-forest-muted">
